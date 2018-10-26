@@ -1,10 +1,11 @@
 
-Jen's ideas:
+* Jen's ideas:
   * Investigate economic incentives for content providers.
     * Her big example: Akamai leased their content delivery platform for free for a while, 
       right until everyone depended on them enough that they could coerce them into giving really good
       deals.
 
+My ideas:
 * This paper [http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.33.2606] generates
   random graphs whose distribution of node degree is similar to that observed in the actual
   internet. Then they investigate the connectivity properties of such graphs and find that they

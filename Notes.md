@@ -16,7 +16,12 @@ My ideas:
   will only isolate the chunks strictly underneath them.
   First, I'd like to see a paper discussing this claim more formally.
 
-  => Now, maybe we could see if economic incentives (or even just the Gao-Rexford
+  * => Now, maybe we could see if economic incentives (or even just the Gao-Rexford
     conditions) could inform the generation of a random graph that more
     closely matches the connectivity properties of the real internet.
+    
+  * => What if we generated graphs using a bunch of different methods and saw which
+    ones matched the connectivity properties of the internet most closely?
+  
+  * I guess these things have probably been done but yeah.
 

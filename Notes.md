@@ -25,3 +25,8 @@ My ideas:
   
   * I guess these things have probably been done but yeah.
 
+* In the models of [GHJRW08] or [LSZ08], do routers have an incentive to lie about being controlled by the same entity? In other words, can an AS split into multiple ASes in order to get better utility? 
+
+[GHJRW08](http://ccr.sigcomm.org/online/files/p267-goldberg.pdf)
+
+[LSZ08](http://www.cs.huji.ac.il/~schapiram/routing_games-full.pdf) 

@@ -62,37 +62,37 @@ claytont@princeton.edu, gbhirsch@cs.princeton.edu }
     Then there exists a path in the network, not containing $m$,
     between $v$ and $r$.
   \end{conjecture}
-  \begin{proof}
-    For the sake of contradiction, assume that all paths between $r$
-    and $v$ include $m$.
-    One of $r$ or $v$ is on the ``same side of $m$'' as the destination
-    node $d$. But the routing on different sides of $m$ cannot directly effect
-    each other, or at least that would be really weird.
+  % \begin{proof}
+  %   For the sake of contradiction, assume that all paths between $r$
+  %   and $v$ include $m$.
+  %   One of $r$ or $v$ is on the ``same side of $m$'' as the destination
+  %   node $d$. But the routing on different sides of $m$ cannot directly effect
+  %   each other, or at least that would be really weird.
 
-    It would be nice if I could make this precise before Friday.
+  %   It would be nice if I could make this precise before Friday.
 
-    % We know that $m$ lies to node $v$ in order to
-    % get $r$ to select a path it likes better.
-    % Because $v$ (and all other nodes) act honestly by best-reply dynamics,
-    % we know $v$ must have changed its route after hearing $m$'s lie.
-    % This, in turn, broke $r$'s original route to $d$.
-    % Thus, $v$ must lie along $r$'s original path to $d$,
-    % so $v$ and $r$ are connected in the network.
-    % Furthermore, 
+  %   % We know that $m$ lies to node $v$ in order to
+  %   % get $r$ to select a path it likes better.
+  %   % Because $v$ (and all other nodes) act honestly by best-reply dynamics,
+  %   % we know $v$ must have changed its route after hearing $m$'s lie.
+  %   % This, in turn, broke $r$'s original route to $d$.
+  %   % Thus, $v$ must lie along $r$'s original path to $d$,
+  %   % so $v$ and $r$ are connected in the network.
+  %   % Furthermore, 
 
-    % Let $T$ denote the (unique) routing tree resulting from
-    % all players honestly following BGP.
-    % For any node $x$ in the graph, let $T_x$ denote the full path
-    % from $x$ to $d$ in $T$.
-    % Let $M$ denote the routing tree resulting from $m$'s lie,
-    % and define $M_x$ similarly to $T_x$.
-    % We know that $T_r \ne M_r$, because $v_m(T_r) < v_m(M_r)$.
-    % Let $p$ be the node along path $T_r$ such that
-    % $T_p\ne M_p$ and $p$ is as close to $d$ as possible.
-    % Then $p$ must have a different next-hop in $T$ than in $M$
-    % (if the next-hop in $T$ and $M$ were the same, then the next-hop $p'$
-    % of $p$ would satisfy $T_{p'}\ne M_{p'}$, yet be closer to $d$ along $T_r$).
-  \end{proof}
+  %   % Let $T$ denote the (unique) routing tree resulting from
+  %   % all players honestly following BGP.
+  %   % For any node $x$ in the graph, let $T_x$ denote the full path
+  %   % from $x$ to $d$ in $T$.
+  %   % Let $M$ denote the routing tree resulting from $m$'s lie,
+  %   % and define $M_x$ similarly to $T_x$.
+  %   % We know that $T_r \ne M_r$, because $v_m(T_r) < v_m(M_r)$.
+  %   % Let $p$ be the node along path $T_r$ such that
+  %   % $T_p\ne M_p$ and $p$ is as close to $d$ as possible.
+  %   % Then $p$ must have a different next-hop in $T$ than in $M$
+  %   % (if the next-hop in $T$ and $M$ were the same, then the next-hop $p'$
+  %   % of $p$ would satisfy $T_{p'}\ne M_{p'}$, yet be closer to $d$ along $T_r$).
+  % \end{proof}
 
   This means that, if all nodes other than $m$ are fully collaborative and
   honest, the nodes will be able to detect $m$'s lie
@@ -123,31 +123,45 @@ claytont@princeton.edu, gbhirsch@cs.princeton.edu }
 
 
 \section{But will you?}
-  Figure~\ref{fig:Nonexistent} shows an example network,
-  taken directly from \cite{RoutingGames}, where $m$ has an incentive
-  to advertise a path that does not exist.
+  Figure~\ref{fig:Nonexistent} shows an example network
+  (taken directly from \cite{RoutingGames}
+  but rendered in the style of \cite{Attraction})
+  where $m$ has an incentive to advertise a path that does not exist.
   We regard this network as the canonical example of Conjecture 1.
   Indeed, node $1$ can inform node $2$ that it is receiving traffic
   from $m$, so $2$ will know that $m$ is lying about its path.
   \begin{figure}[h]
     \centering
     \caption{Nonexistent}\label{fig:Nonexistent}
-    \includegraphics[width=0.5\textwidth]{Nonexistent}
+    \includegraphics[width=0.75\textwidth]{NonexistentBetter}
   \end{figure}
 
-  This example is a Gao-Rexford network, for suitable customer-provider
-  relationships. However, as discussed in \cite{RoutingGames},
-  node $1$ is a customer of node $2$\footnote{
-    Note: I don't actually know if this is forced...
-  }.
+  This example is a Gao-Rexford network, where customer-provider
+  relationships are denoted by arrows pointing from customers to providers.
+  Note that node $2$ must be a provider of node $1$ for this example
+  (otherwise, $2$ would not export its route to $d$ to $1$).
+  In general, customers do not provide services for their providers,
+  so it may not make sense for node $1$ to help node $2$ catch $m$'s lie.
   Thus, it is not reasonable to assume that $1$ will want to help
   $2$ detect the lies of $m$, because $1$ does not perform services
-  for its provider $2$. And in fact it may be that $1$ has strict incentives to not perform routing services.
-  
+  for its provider $2$.
+  On the other hand, if $1$ does inform $2$ of the lie, and $2$ resumes
+  using its old route, $1$ actually gets a path that it prefers.
+
+  Thus, we regard the competing incentives of getting good paths
+  (especially in the presence of uncertainty about what routing actually occurs)
+  with the economic obligations of customer-provider relationships
+  to be an interesting avenue of research.
+  That last sentence is a trainwreck, but it has the core idea lol.
+
+  And in fact it may be that $1$ has strict incentives to not perform routing services.
+  \footnote{hmmm no I don't quite follow this}
+
   \section{Project Components}
   We plan to first analyze which situations can result in a node having an incentive to lie and other nodes having incentives to not expose that lie to each other. In addition we will design a new protocol and consider corresponding business relationships in which nodes can both send messages about their paths, and separately share other information that can be used to expose others' lies. We will also analyze situations under this new protocol and see how the analysis differs.
   
   We will also program virtual nodes and run simulations of networks using this new protocol, and confirm that the protocol works as we expect it to.
+  \footnote{The above seems fine, but I guess we don't need it now}
 
 
 

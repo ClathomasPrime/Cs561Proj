@@ -29,29 +29,43 @@
 
 % \renewcommand{\qedsymbol}{\filledbox}
  
-\title{You can't handle the lie: \\
-  Catching lying actors in the BGP protocol }
-\author{Clay Thomas, Gavriel Hirsch\\
-claytont@princeton.edu, gbhirsch@cs.princeton.edu }
+\title{
+  You can't handle the lie: \\
+  Catching lying actors in the BGP protocol 
+}
+\author{
+  Clay Thomas\\ claytont@cs.princeton.edu
+  \and 
+  Gavriel Hirsch\\ gbhirsch@cs.princeton.edu 
+}
 \maketitle
 
-\begin{abstract}
-  In many BGP networks, nodes can get their preferred path
-  by advertising a certain path, but forwarding traffic along another.
-  However, in many of the example networks from the literature,
-  other nodes can collectively detect these lies
-  by comparing the route that is advertised (known by the node
-  the manipulator lies to)
-  to the route actually taken
-  (known by the node the manipulator actually forwards traffic to).
-  We want to study the conditions under which nodes
-  can lie without being detected,
-  as well as the economic incentives of other nodes to collaboratively
-  check each other (such as providers helping customers detect liars).
-\end{abstract}
+In many BGP networks, nodes can get their preferred path
+by advertising a certain path, but forwarding traffic along another.
+However, in many of the example networks from the literature,
+other nodes can collectively detect these lies
+by comparing the route that is advertised (known by the node
+the manipulator lies to)
+to the route actually taken
+(known by the node the manipulator actually forwards traffic to).
+We want to study the conditions under which nodes
+can lie without being detected,
+as well as the economic incentives of other nodes to collaboratively
+check each other (such as providers helping customers detect liars).
+
+Our thinking is primarily based on the routing games model of
+\cite{RoutingGames}, where node's objectives are simply to get
+better paths to a destination.
+Additional consideration is given to the model
+of \cite{Attraction}, where nodes seek to attract traffic as
+well as get better paths.
 
 \section{In the \cite{RoutingGames} model, you can always catch a liar}
 
+  Intuitively, if a node lies to get a better path, the node it lies
+  to and the node it routs through must be connected.
+  The following conjecture, which we hope to prove formally,
+  makes this precise.
   \begin{conjecture}
     Suppose No Dispute Wheel holds, but route verification does not, and
     assume that the network is connected.
@@ -103,9 +117,11 @@ claytont@princeton.edu, gbhirsch@cs.princeton.edu }
     an example taken directly from \cite{Attraction}.
     In this case, node $m$ needs to lie to nodes $c$ and $n$,
     but actually forward traffic to node $d$.
-    The only nodes between $d$ and $c$ (or $n$) pass through node $m$.
+    The only paths between $d$ and $c$ (or $n$) pass through node $m$.
     Thus, the honest nodes cannot catch $m$ in its lie solely using 
     the communication channels provided by the network itself.
+    With this example, we see that the \cite{Attraction} model
+    provides more complications than \cite{RoutingGames} for our questions.
 
     \begin{figure}[h]
       \centering
@@ -113,13 +129,13 @@ claytont@princeton.edu, gbhirsch@cs.princeton.edu }
       \includegraphics[width=0.75\textwidth]{Bowtie}
     \end{figure}
 
-    One objection may be that real-life networks are much more highly
-    connected than the small counterexamples presented in these papers.
-    However, we believe that very small sets of nodes surrounding
-    the adversary $m$ can reasonably model the set of nodes
-    that actually \emph{care} enough to try and catch $m$ lying.
-    Thus, it makes sense to ask if small subnetworks can catch $m$
-    communicating only along links among themselves.
+    % One objection may be that real-life networks are much more highly
+    % connected than the small counterexamples presented in these papers.
+    % However, we believe that very small sets of nodes surrounding
+    % the adversary $m$ can reasonably model the set of nodes
+    % that actually \emph{care} enough to try and catch $m$ lying.
+    % Thus, it makes sense to ask if small subnetworks can catch $m$
+    % communicating only along links among themselves.
 
 
 \section{But will you?}
@@ -139,26 +155,31 @@ claytont@princeton.edu, gbhirsch@cs.princeton.edu }
   This example is a Gao-Rexford network, where customer-provider
   relationships are denoted by arrows pointing from customers to providers.
   Note that node $2$ must be a provider of node $1$ for this example
-  (otherwise, $2$ would not export its route to $d$ to $1$).
+  (otherwise, $2$ would not export its route to $1$).
   In general, customers do not provide services for their providers,
   so it may not make sense for node $1$ to help node $2$ catch $m$'s lie.
-  Thus, it is not reasonable to assume that $1$ will want to help
-  $2$ detect the lies of $m$, because $1$ does not perform services
-  for its provider $2$.
+  % Thus, it is not reasonable to assume that $1$ will want to help
+  % $2$ detect the lies of $m$, because $1$ does not perform services
+  % for its provider $2$.
   On the other hand, if $1$ does inform $2$ of the lie, and $2$ resumes
   using its old route, $1$ actually gets a path that it prefers.
 
-  Thus, we regard the competing incentives of
-\begin{itemize}
-\item getting good paths
-\item economic obligations of customer-provider relationships
-\item costs of maintaining and communicating lie-detecting information
-\end{itemize}
-to be an interesting avenue of research
+  Given the above considerations, we regard the competing incentives of
+  \begin{itemize}
+    \item getting good paths
+    \item economic obligations of customer-provider relationships
+    \item costs of maintaining and communicating lie-detecting information
+  \end{itemize}
+  to be an interesting avenue of research.
 
-  \section{Project Components}
-  We plan to first analyze which situations can result in a node having an incentive to lie and other nodes having incentives to not expose that lie to each other. In addition we will design a new protocol and consider corresponding business relationships in which nodes can both send messages about their paths, and separately share other information that can be used to expose others' lies. We will also analyze situations under this new protocol and see how the analysis differs.
-
+\section{Project Components}
+  We plan to first analyze which situations can result in a node having an
+  incentive to lie and other nodes having incentives to not expose that lie to
+  each other. In addition we will design a new protocol and consider
+  corresponding business relationships in which nodes can both send messages
+  about their paths, and separately share other information that can be used to
+  expose others' lies. We will also analyze situations under this new protocol
+  and see how the analysis differs.
 
 
 % \section{Notes}

@@ -1,3 +1,10 @@
+((Auction-related things))
+https://dl.acm.org/citation.cfm?id=1823847
+www.cs.princeton.edu/courses/archive/fall18/cos561/papers/BitTorrent03.pdf
+http://ccr.sigcomm.org/online/files/p243-levin.pdf
+
+
+
 
 * Jen's ideas:
   * Investigate economic incentives for content providers.
@@ -30,3 +37,6 @@ My ideas:
 [GHJRW08](http://ccr.sigcomm.org/online/files/p267-goldberg.pdf)
 
 [LSZ08](http://www.cs.huji.ac.il/~schapiram/routing_games-full.pdf) 
+
+
+

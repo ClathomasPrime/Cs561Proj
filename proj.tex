@@ -1,0 +1,111 @@
+\documentclass[12pt]{article}
+
+
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage[margin=1in]{geometry} 
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage[vlined,linesnumbered,ruled,resetcount]{algorithm2e}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\val}{val}
+
+\renewcommand\thesubsection{(\alph{subsection})}
+
+% \usepackage[noend]{algpseudocode}
+% \usepackage{algorithm}
+% \usepackage{algorithmicx}
+
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+
+\newtheorem{definition}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{conjecture}{Conjecture}
+
+\begin{document}
+
+% \renewcommand{\qedsymbol}{\filledbox}
+
+\title{
+  You can't handle the lie: \\
+  Catching lying actors in the BGP protocol 
+}
+\author{
+  Clay Thomas\\ claytont@cs.princeton.edu
+  \and 
+  Gavriel Hirsch\\ gbhirsch@cs.princeton.edu 
+}
+\maketitle
+
+In many BGP networks, nodes can get their preferred path
+by advertising a certain path, but forwarding traffic along another.
+However, in many of the example networks from the literature,
+other nodes can collectively detect these lies
+by comparing the route that is advertised (known by the node
+the manipulator lies to)
+to the route actually taken
+(known by the node the manipulator actually forwards traffic to).
+We want to study the conditions under which nodes
+can lie without being detected,
+as well as the economic incentives of other nodes to collaboratively
+check each other (such as providers helping customers detect liars).
+
+Our thinking is primarily based on the routing games model of
+\cite{RoutingGames}, where node's objectives are simply to get
+better paths to a destination.
+Additional consideration is given to the model
+of \cite{Attraction}, where nodes seek to attract traffic as
+well as get better paths.
+
+\section{Definitions}
+  We follow the model of \cite{RoutingGames} and \cite{AgtBookDistributed},
+  and start with the following model.
+
+\section{In the \cite{RoutingGames} model, you can always catch a liar}
+
+  Intuitively, if a node lies to get a better path, the node it lies
+  to and the node it routs through must be connected.
+  The following conjecture, which we hope to prove formally,
+  makes this precise.
+  \begin{conjecture}
+    Suppose No Dispute Wheel holds, but route verification does not, and
+    assume that the network is connected.
+    Suppose that (assuming other nodes play truthfully)
+    a node $m$ can achieve a better path to $d$ by announcing
+    a route that does not exist to a node $v$.
+    Let $m$'s next hop in the manipulated routing tree be denoted $r$.
+    Then there exists a path in the network, not containing $m$,
+    between $v$ and $r$.
+    Moreover, no node along this path benefits from the manipulation
+    performed by $m$.
+  \end{conjecture}
+  \begin{proof}
+    For the sake of contradiction, assume that all paths between $r$
+    and $v$ include $m$.
+    One of $r$ or $v$ is on the ``same side of $m$'' as the destination
+    node $d$.
+    There must be a path from $r$ to $d$ not containing $m$,
+    because $m$ cannot appear twice on it route to $d$ in the manipulated tree.
+    Thus, every path from $v$ to $d$ must contain $m$.
+
+    Let $T$ denote the original routing tree, and for each node $n$
+    let $T_n$ denote the path $n$ receives to the destination.
+    Let $M_n$ denote the advertised route that $n$ selects in the manipulated
+    routing tree, i.e. the route $n$ believes it receives,
+    while $\widetilde M$ is the actual manipulated routing tree and 
+    $\widetilde M_n$ is the actual route $n$'s traffic follows.
+    Note that the path $M_n$ need not actually exist in the graph.
+  \end{proof}
+
+  This means that, if all nodes other than $m$ are fully collaborative and
+  honest, the nodes will be able to detect $m$'s lie
+  by communicating along the links that already exist in the network.
+
+
+\bibliography{proj}{}
+\bibliographystyle{alpha}
+
+\end{document}

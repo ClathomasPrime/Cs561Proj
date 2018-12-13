@@ -8,6 +8,23 @@ import qualified Data.Map as Map
 
 type AS = Int
 
+type Path = [AS]
+-- ^ Invariant: always include source and dest in path,
+--   even in forward table
+
+data ExportStrategy
+  = HonestFilteredExport ExportFilter
+  | ManipulatorExport (AS -> AS -> Maybe Path)
+  -- ^ requester -> dest ->
+  --   ((Nothing if request denied,
+  --     Just [] for claim "I have no path", Just path o.w.))
+  -- ^ Note: we almost certainly want to let manipulators tell the true
+  -- based on certain conditions... maybe play this by ear.
+
+data QueryStrategy
+  = HonestAnswerQueries
+  | ManipulatorAnswerQueries () -- ^ fill in this type
+
 type ExportFilter = AS -> Path -> Bool
 
 type PathPref = Path -> Maybe Double
@@ -21,35 +38,42 @@ type AttractionPref = [Path] -> Double
 -- | hardcoded and static per each AS
 data AsData = AsData
   { asNumber :: AS
-  , asExportFilter :: ExportFilter
+  , asExportStrategy :: ExportStrategy
+  -- , asExportFilter :: ExportFilter
   , asPathPref :: PathPref
   -- ^ Nothing if path isn't allowed
   , asAttractionPref :: AttractionPref
+  -- ^ I'm starting to think this won't be very useful.
+  --   The decisions made to attract traffic aren't determined
+  --   by a fixed algorithm such as BGP.
+  --   Might be better to have a ``decision making'' type
+  , asQueryStrategy :: QueryStrategy
   }
 
 instance Show AsData where
   show d = show (asNumber d)
 
--- changes over life of protocol
+-- | changes over life of protocol
 data AsState = AsState
   { asForwardTable :: Map AS [AS]
   -- ^ unreachable is represented by an empty list
-  , asNextHopQueries :: ()
-  -- , asExtraInfo
-  --   :: forall a. BgpStrategizer a => BgpStrategyState a
-    -- ^ unclear if this is needed
+  -- Invariant: As i should get path [i] to dest i.
+  , asPreviousQueries :: [Query]
+  -- ^ Queries you've already considered
   } deriving(Show)
 
-type Path = [AS]
-
 data QueryMessage
-  = QueryForward Query
-  | AnswerForward Query Bool
+  = QueryForward { getQuery :: Query }
+  -- | AnswerForward Query Bool
   deriving(Show, Eq, Ord, Read)
 
+-- A type allowing the queries to return to the asker could look like this:
+-- data QueryMessage
+--   = QueryForward { getQuery :: Query, returnPath :: Path }
+--   | AnswerForward { getQuery :: Query, returnPath :: Path, answer :: Bool }
+
 data Query = Query
-  { queryAsker :: AS
-  , queryManipulator :: AS
+  { queryManipulator :: AS
   , queryNextHop :: AS
   , queryDestination :: AS
   } deriving(Show, Eq, Ord, Read)
@@ -64,10 +88,6 @@ data NetworkData = NetworkData
   , networkAses :: Map AS (AsData, AsState)
   } deriving(Show)
 
--- data NetworkState = NetworkState
---   {
---   } deriving(Show)
-
 equalRoutingTables :: NetworkData -> NetworkData -> Bool
 equalRoutingTables net1 net2
   = Map.foldl (&&) True
@@ -75,7 +95,13 @@ equalRoutingTables net1 net2
   where compareAses (_, state1) (_, state2) =
           asForwardTable state1 == asForwardTable state2
 
+emptyNetworkMessages :: NetworkData -> Bool
+emptyNetworkMessages network
+  = Map.foldl (\b ms -> b && null ms) True (networkMessages network)
+
+
 --------------------------------------------------------------------------------
+-- These types are all speculative:
 
 type BgpLocalState = ()
 

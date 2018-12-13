@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 755483e5a1bc4efdc7d4b11d3cdc4a1795078cd19b7f31f1d7d1e89dcda3c254
+-- hash: a00d35e3682d5082e8d3bf5054b8127afbe1efb434f49e60030717c9b48c0074
 
 name:           bgp-fact-check
 version:        0.1.0.0
@@ -24,6 +24,7 @@ executable bgp-fact-check
       Constructors
       Dynamics
       Examples
+      FactCheck
       Strategies
       Types
       Paths_bgp_fact_check

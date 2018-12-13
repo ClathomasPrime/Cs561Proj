@@ -1,18 +1,64 @@
 module Constructors where
 
+import Safe
 import Data.List
 import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Types
 
--- (useful for inputting bidirectional edges)
+--------------------------------------------------------------------------------
+--
+--------------------------------------------------------------------------------
+
+emptyAsState :: [AS] -> AS -> AsState
+emptyAsState ases agent = AsState
+  { asForwardTable = Map.fromList $
+      (agent,[agent]) : [(j,[]) | j <- ases \\ [agent]]
+  , asPreviousQueries = []
+  }
+
+-- For make `networkTopology` undirected
 reflexivize :: Ord a => Map a [a] -> Map a [a]
 reflexivize m = Map.foldlWithKey updateAll m m
   where updateAll m' k as = foldl (updateOne k) m' as
         updateOne k m' a = Map.alter (ins k) a m'
         ins k Nothing = Just $ [k]
         ins k (Just bs) = Just $ if k `elem` bs then bs else k:bs
+
+--------------------------------------------------------------------------------
+-- Limited cases
+
+noPolicy :: PathPref
+noPolicy _ = Nothing
+
+policySingleDest :: AS -> [Path] -> PathPref
+policySingleDest dest prefList path
+  | lastMay path == Just dest =
+    case elemIndex path prefList of
+      Nothing -> Nothing -- << Not allowed to route through
+      Just i -> Just . fromIntegral $ length prefList - i
+  | otherwise = Nothing
+
+specializeForDest :: AS -> PathPref -> PathPref -> PathPref
+specializeForDest specialDest specialPref otherPref path
+  | lastMay path == Just specialDest = specialPref path
+  | otherwise = otherPref path
+
+policyExplicitList :: [Path] -> PathPref
+policyExplicitList prefList path =
+  case elemIndex path prefList of
+    Nothing -> Nothing -- << Not allowed to route through
+    Just i -> Just . fromIntegral $ length prefList - i
+
+policyExplicitSingleDest :: AS -> [Path] -> PathPref
+policyExplicitSingleDest dest prefList
+  = specializeForDest dest (policyExplicitList prefList) noPolicy
+
+-- =============================================================================
+-- ``Behavioral'' constructors
+-- =============================================================================
+
 
 --------------------------------------------------------------------------------
 -- Export Filters

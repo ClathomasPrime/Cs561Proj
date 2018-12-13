@@ -25,6 +25,15 @@ import Debug.Trace
 --   activated = filterM randIO
 --     where randIO _ = randomRIO (True, False)
 
+bgpConverge :: NetworkData -> Maybe NetworkData
+bgpConverge network = bgpConverge' 20 network (bgpStepAllAct network)
+  where bgpConverge' _ prev current
+          | prev `equalRoutingTables` current = Just current
+        bgpConverge' 0 _ _
+          = Nothing
+        bgpConverge' i _ current
+          = bgpConverge' (i-1) current (bgpStepAllAct current)
+
 bgpStepAllAct :: NetworkData -> NetworkData
 bgpStepAllAct network@(NetworkData{..}) =
   foldl bgpActivation network networkAsNumbers
@@ -34,7 +43,7 @@ bgpStepAllAct network@(NetworkData{..}) =
 --    2) read and respond to query messages
 bgpActivation :: NetworkData -> AS -> NetworkData
 bgpActivation network@(NetworkData{..}) agent =
-  let Just messages = Map.lookup agent networkMessages
+  let -- Just messages = Map.lookup agent networkMessages
       -- ^ do nothing with this so far
 
       updateDest ntw d = bgpUpdateRouteToDest ntw agent d
@@ -43,6 +52,8 @@ bgpActivation network@(NetworkData{..}) agent =
    in updatedForwardTables
 
 bgpUpdateRouteToDest :: NetworkData -> AS -> AS -> NetworkData
+bgpUpdateRouteToDest network@(NetworkData{..}) agent dest
+  | agent == dest = network
 bgpUpdateRouteToDest network@(NetworkData{..}) agent dest =
   let Just neighbors = Map.lookup agent networkTopology
       neighborData = Map.filterWithKey (\k _ -> k `elem` neighbors) networkAses
@@ -63,12 +74,13 @@ bgpUpdateRouteToDest network@(NetworkData{..}) agent dest =
       rankedPaths = [(rank, p)
         | p <- availablePaths, rank <- maybeToList $ asPathPref p]
 
-      favoritePathMay = maximumMay rankedPaths
+      favoritePath = snd $ maximum $ (-1, []) : rankedPaths
       updateForward path (d,s) = (d,updateForwardTable s dest path)
-   in case favoritePathMay of
-        Nothing -> network
-        Just (_,path) -> network {
-          networkAses = Map.adjust (updateForward path) agent networkAses }
+   in  network {
+        networkAses = Map.adjust (updateForward favoritePath) agent networkAses
+        }
+
+--------------------------------------------------------------------------------
 
 updateForwardTable :: AsState -> AS -> Path -> AsState
 updateForwardTable asState dest path
@@ -80,11 +92,15 @@ updateForwardTable asState dest path
 -- emit `Just []' if no path yet in forward table.
 exportTo :: AsData -> AsState -> AS -> AS -> Maybe Path
 exportTo agentData@(AsData{..}) agentState@(AsState{..}) requester dest =
-  case Map.lookup dest asForwardTable of
-    Just path -> if asExportFilter requester path
-      then Just path
-      else Nothing
-    Nothing -> Nothing
+  case asExportStrategy of
+    HonestFilteredExport exportFilter ->
+      let Just path = Map.lookup dest asForwardTable
+       in if exportFilter requester path
+             then Just path
+             else Nothing
+    ManipulatorExport strategy -> strategy requester dest
+-- ^ Also, this is where the strategic manipulations will need to occur.
+-- So basically, AsData should contain a `Maybe ((implementation of this func))`
 
 
 -- | ignoring lies and stuff
@@ -97,3 +113,4 @@ realPathToDest network@(NetworkData{..}) source dest =
         Nothing -> Nothing
         Just [] -> Nothing
         Just (nextHop:_) -> fmap (source :) (realPathToDest network nextHop dest)
+

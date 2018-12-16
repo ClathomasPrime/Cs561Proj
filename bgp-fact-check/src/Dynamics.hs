@@ -9,6 +9,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Function
 import Safe.Foldable
+import Control.Lens
 
 import Types
 
@@ -57,7 +58,7 @@ bgpUpdateRouteToDest network@(NetworkData{..}) agent dest
 bgpUpdateRouteToDest network@(NetworkData{..}) agent dest =
   let Just neighbors = Map.lookup agent networkTopology
       neighborData = Map.filterWithKey (\k _ -> k `elem` neighbors) networkAses
-      exports = Map.map (\(u,v) -> exportTo u v agent dest) neighborData
+      exports = Map.map (\u -> exportTo u agent dest) neighborData
       -- ^ get the path in neighbors routing tables (provided they want to export them)
 
       availablePaths :: [Path]
@@ -69,29 +70,28 @@ bgpUpdateRouteToDest network@(NetworkData{..}) agent dest =
         | otherwise = (agent:p) : ps
       -- ^ add yourself to the paths
 
-      Just (agentData@(AsData{..}), agentState@(AsState{..}))
-        = Map.lookup agent networkAses
+      Just agentData@(AsData{..}) = Map.lookup agent networkAses
       rankedPaths = [(rank, p)
         | p <- availablePaths, rank <- maybeToList $ asPathPref p]
 
       favoritePath = snd $ maximum $ (-1, []) : rankedPaths
-      updateForward path (d,s) = (d,updateForwardTable s dest path)
+      updateForward path s = updateForwardTable s dest path
    in  network {
         networkAses = Map.adjust (updateForward favoritePath) agent networkAses
         }
 
 --------------------------------------------------------------------------------
 
-updateForwardTable :: AsState -> AS -> Path -> AsState
-updateForwardTable asState dest path
-  = asState { asForwardTable =
-    Map.alter addPath dest (asForwardTable asState) }
+updateForwardTable :: AsData -> AS -> Path -> AsData
+updateForwardTable asData dest path
+  = asData { asForwardTable =
+    Map.alter addPath dest (asForwardTable asData) }
   where addPath _ = Just path
 
 -- | emit `Nothing' if request for a path denied
 -- emit `Just []' if no path yet in forward table.
-exportTo :: AsData -> AsState -> AS -> AS -> Maybe Path
-exportTo agentData@(AsData{..}) agentState@(AsState{..}) requester dest =
+exportTo :: AsData -> AS -> AS -> Maybe Path
+exportTo agentData@(AsData{..}) requester dest =
   case asExportStrategy of
     HonestFilteredExport exportFilter ->
       let Just path = Map.lookup dest asForwardTable
@@ -108,7 +108,7 @@ realPathToDest :: NetworkData -> AS -> AS -> Maybe Path
 realPathToDest _ source dest
   | source == dest = Just [dest]
 realPathToDest network@(NetworkData{..}) source dest =
-  let Just (_, sourceState) = Map.lookup source networkAses
+  let Just sourceState = Map.lookup source networkAses
    in case Map.lookup dest (asForwardTable sourceState) of
         Nothing -> Nothing
         Just [] -> Nothing

@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a00d35e3682d5082e8d3bf5054b8127afbe1efb434f49e60030717c9b48c0074
+-- hash: 3814ed0e75e328d87f96361b9792b6a2d0c242ec5e1bf79a6220014bb6474ebd
 
 name:           bgp-fact-check
 version:        0.1.0.0
@@ -33,6 +33,7 @@ executable bgp-fact-check
   build-depends:
       base >=4.7 && <5
     , containers
+    , lens
     , mtl
     , pretty-simple
     , random

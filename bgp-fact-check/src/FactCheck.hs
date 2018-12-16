@@ -38,19 +38,19 @@ initializeMessages :: NetworkData -> NetworkData
 initializeMessages network =
   network { networkMessages = Map.fromList $
     do i <- networkAsNumbers network
-       let Just (agentData, _) = Map.lookup i (networkAses network)
+       let Just agentData = Map.lookup i (networkAses network)
        case asQueryStrategy agentData of
          HonestAnswerQueries -> return (i, queryAllHops network i)
-         ManipulatorAnswerQueries _ -> return (i, [])
+         ManipulatorAnswerQueries -> return (i, [])
   }
 
-queryAllHops :: NetworkData -> AS -> [(AS, QueryMessage)]
+queryAllHops :: NetworkData -> AS -> [(AS, Query)]
 queryAllHops network@(NetworkData{..}) agent =
-  let Just (_, agentState) = Map.lookup agent networkAses
+  let Just agentState = Map.lookup agent networkAses
       hopQueries = do
         (dest, path) <- Map.toList $ asForwardTable agentState
         (manip, nextHop) <- tailSafe $ zip path (tailSafe path)
-        return . QueryForward $ Query manip nextHop dest
+        return $ Query manip nextHop dest
    in fmap (agent,) hopQueries
 
 -- ^ some initialization code, then etc.
@@ -65,23 +65,23 @@ factCheckStepAllAct network@(NetworkData{..}) =
 -- | The main workhorse
 factCheckActivation :: NetworkData -> AS -> ([AS], NetworkData)
 factCheckActivation network@(NetworkData{..}) agent =
-  let Just (_, agentState) = Map.lookup agent networkAses
+  let Just agentState = Map.lookup agent networkAses
       previousQueries = asPreviousQueries agentState
       Just messages = fmap (fmap snd) $ Map.lookup agent networkMessages
       -- ^ Currently, I just throw away the source of the message...
-      updatedQueries = union previousQueries (fmap getQuery messages)
+      updatedQueries = union previousQueries messages
+      updatedAses :: Map AS AsData
       updatedAses = Map.adjust adj agent networkAses
-      adj (d,s) = (d, s { asPreviousQueries = updatedQueries })
+      adj s = s { asPreviousQueries = updatedQueries }
 
       (caughtAses, forwardMessages) = foldl accum ([],[]) messages
       accum (caughtAses, forwardMsgs) queryMessage
-        | getQuery queryMessage `elem` previousQueries
-          = (caughtAses, forwardMsgs)
+        | queryMessage `elem` previousQueries = (caughtAses, forwardMsgs)
           -- ^ If you've already seen this query, ignore it
         | otherwise =
           case factCheckForwardMessage network agent queryMessage of
             Left False ->
-              let manip = (queryManipulator . getQuery $ queryMessage)
+              let manip = (queryManipulator $ queryMessage)
                in (manip : caughtAses, forwardMsgs)
               -- ^ caught a liar. Add him to the caught list
               -- Note: right now, a manip may pop up in the list multiple times
@@ -108,11 +108,11 @@ factCheckActivation network@(NetworkData{..}) agent =
 -- | Left b means ``I know, so I'll stop forwarding''
 --   Right [..(x,m)..] means ``I don't know, so I'll send m to x''
 factCheckForwardMessage
-  :: NetworkData -> AS -> QueryMessage -> Either Bool [(AS, QueryMessage)]
-factCheckForwardMessage network@(NetworkData{..}) agent (QueryForward query) =
+  :: NetworkData -> AS -> Query -> Either Bool [(AS, Query)]
+factCheckForwardMessage network@(NetworkData{..}) agent query =
   case factCheckAnswerQuery network agent query of
     Just b -> Left b
-    Nothing -> Right $ fmap (,QueryForward query) nonManipNeighbors
+    Nothing -> Right $ fmap (,query) nonManipNeighbors
       -- ^ collect the neighbors in this list
   where Just neighbors = Map.lookup agent networkTopology
         nonManipNeighbors = filter (/= queryManipulator query) neighbors
@@ -138,7 +138,7 @@ dontWorryAbout = undefined
 
 asesForwardingHere :: NetworkData -> AS -> AS -> [AS]
 asesForwardingHere network@(NetworkData{..}) agent dest =
-  let forwardsToAgent (_,state) =
+  let forwardsToAgent state =
         case Map.lookup dest (asForwardTable state) of
           Just (_:nextHop:_) -> nextHop == agent
           _ -> False

@@ -11,9 +11,13 @@ import Types
 --
 --------------------------------------------------------------------------------
 
-emptyAsState :: [AS] -> AS -> AsState
-emptyAsState ases agent = AsState
-  { asForwardTable = Map.fromList $
+emptyAsData :: [AS] -> AS -> AsData
+emptyAsData ases agent = AsData
+  { asNumber = agent
+  , asExportStrategy = HonestFilteredExport $ exportAllOrNothing []
+  , asPathPref = noPolicy
+  , asQueryStrategy = HonestAnswerQueries
+  , asForwardTable = Map.fromList $
       (agent,[agent]) : [(j,[]) | j <- ases \\ [agent]]
   , asPreviousQueries = []
   }
@@ -93,13 +97,13 @@ policyDifferentialNextHop = undefined
 -- Attraction Preferences
 -- type AttractionPref = Path -> Double
 
-attractNothing :: AttractionPref
-attractNothing _ = 0
-
-attractVolume :: [AS] -> AttractionPref
-attractVolume victims paths =
-  fromIntegral . length . filter (\v -> any (v `elem`) paths) $ victims
-
-attractNextHop :: [AS] -> AttractionPref
-attractNextHop = undefined
--- ^ customer attraction is a special case of this, I think
+-- attractNothing :: AttractionPref
+-- attractNothing _ = 0
+--
+-- attractVolume :: [AS] -> AttractionPref
+-- attractVolume victims paths =
+--   fromIntegral . length . filter (\v -> any (v `elem`) paths) $ victims
+--
+-- attractNextHop :: [AS] -> AttractionPref
+-- attractNextHop = undefined
+-- -- ^ customer attraction is a special case of this, I think

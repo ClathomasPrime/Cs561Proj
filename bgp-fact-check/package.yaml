@@ -18,6 +18,7 @@ dependencies:
   - random
   - safe
   - pretty-simple
+  - lens
 
 executables:
   bgp-fact-check:

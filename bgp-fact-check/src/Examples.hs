@@ -14,17 +14,9 @@ import Constructors
 import Dynamics
 import FactCheck
 
-genericDataState :: [AS] -> AS -> PathPref -> (AsData, AsState)
+genericDataState :: [AS] -> AS -> PathPref -> AsData
 genericDataState asNums i prefs =
-  ( AsData
-    { asNumber = i
-    , asExportStrategy = HonestFilteredExport exportAll
-    , asPathPref = prefs
-    , asAttractionPref = attractNothing
-    , asQueryStrategy = HonestAnswerQueries
-    }
-  , emptyAsState asNums i
-  )
+  (emptyAsData asNums i) { asPathPref = prefs }
 
 badGadget :: NetworkData
 badGadget = NetworkData
@@ -86,17 +78,14 @@ inconsistentPolicyManip = NetworkData
         genericDataState' = genericDataState asNums
 
         dataState i@1 =
-          ( AsData
+          (emptyAsData asNums i)
             { asNumber = i
             , asExportStrategy = ManipulatorExport . curry $
                 \case (4,3) -> Just [1,3]
                       _ -> Nothing
             , asPathPref = policyExplicitSingleDest 3 [[1,2,3], [1,3]]
-            , asAttractionPref = attractNothing
-            , asQueryStrategy = ManipulatorAnswerQueries ()
+            , asQueryStrategy = ManipulatorAnswerQueries
             }
-          , emptyAsState asNums i
-          )
 
         dataState 2 = genericDataState' 2
           (policyExplicitSingleDest 3 [[2,3]])

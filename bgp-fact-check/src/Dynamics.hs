@@ -36,8 +36,6 @@ bgpStep :: (Activator m, MonadState NetworkData m) => m ()
 bgpStep = do
   activatedAgents <- activate =<< use networkAsNumbers
   mapM_ bgpActivation activatedAgents
-  -- mapM_ =<< use networkAsNumbers
-  -- foldl bgpActivation network $ view networkAsNumbers network
 
 -- | An activated AS will:
 --    1) update it routing table by looking at all its neighbors
@@ -73,12 +71,8 @@ bgpUpdateRouteToDest agent dest = do
         , rank <- maybeToList $ view asPathPref agentData p]
       favoritePath = snd $ maximum $ (-1, []) : rankedPaths
       updateForward s = updateForwardTable s dest favoritePath
-  -- traceShowM favoritePath
 
   (networkAses . ix agent) %= updateForward -- network
-      -- network {
-      --   networkAses = Map.adjust (updateForward favoritePath) agent networkAses
-      --   }
 
 --------------------------------------------------------------------------------
 
@@ -97,9 +91,6 @@ exportTo agentData requester dest =
              then Just path
              else Nothing
     ManipulatorExport strategy -> strategy requester dest
--- ^ Also, this is where the strategic manipulations will need to occur.
--- So basically, AsData should contain a `Maybe ((implementation of this func))`
-
 
 -- | ignoring lies and stuff
 realPathToDest :: NetworkData -> AS -> AS -> Maybe Path
@@ -111,4 +102,3 @@ realPathToDest network source dest =
         Nothing -> Nothing
         Just [] -> Nothing
         Just (nextHop:_) -> fmap (source :) (realPathToDest network nextHop dest)
-

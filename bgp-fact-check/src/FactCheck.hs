@@ -70,75 +70,30 @@ factCheckStep
 factCheckStep = do
   activatedAgents <- activate =<< use networkAsNumbers
   mapM_ factCheckActivation activatedAgents
-  -- net <- get
-  -- traceShowM net
-  -- foldl accum ([], network) (view networkAsNumbers network)
-  -- where accum (caughtAses, net) agent =
-  --         let (caught', net') = factCheckActivation net agent
-  --          in (caught' ++ caughtAses, net')
 
 -- | The main workhorse
 factCheckActivation :: (MonadWriter [AS] m, MonadState NetworkData m) => AS -> m ()
 factCheckActivation agent = do
-  -- traceShowM agent
   Just previousQueries <- preuse $ networkAses . ix agent . asPreviousQueries
-  -- let previousQueries = view asPreviousQueries agentData
   Just messages <- preuse $ networkMessages . ix agent
   assign (networkMessages . at agent) (Just [])
   let updatedQueries = union previousQueries (fmap snd messages)
   assign (networkAses . ix agent . asPreviousQueries) updatedQueries
-  -- ^^ REALLY IMPORTANT
 
-      -- updatedAses :: Map AS AsData
-      -- updatedAses = set (ix agent . asPreviousQueries)
-      --   updatedQueries (view networkAses network)
-
-      -- updatedAses = Map.adjust adj agent networkAses
-      -- adj s = set asPreviousQueries updatedQueries s
-  -- let
-  --     (caughtAses, forwardMessages) = foldl accum ([],[]) messages
-  --     accum (caughtAses, forwardMsgs) queryMessage
-  --       | queryMessage `elem` previousQueries = (caughtAses, forwardMsgs)
-  --         -- ^ If you've already seen this query, ignore it
-  --       | otherwise =
-  --         case factCheckForwardMessage network agent queryMessage of
-  --           Left False ->
-  --             let manip = view queryManipulator queryMessage
-  --              in (manip : caughtAses, forwardMsgs)
-  --             -- ^ caught a liar. Add him to the caught list
-  --             -- Note: right now, a manip may pop up in the list multiple times
-  --           Left True -> (caughtAses, forwardMsgs)
-  --             -- ^ verified something. Don't forward the question
-  --           Right newMessages -> (caughtAses, newMessages ++ forwardMsgs)
-  --             -- ^ not sure. Forward the question.
   forwards <- concat <$> mapM (uncurry $ processMessage agent) messages
-  -- traceShowM forwards
   mapM_ (uncurry $ sendMessage agent) forwards
-  -- msgs <- use networkMessages
-  -- traceShowM msgs
-  -- let
-  --     -- clearConsideredMessages = Map.insert agent [] (view networkMessages network)
-  --     ins queryMessage oldMessageList
-  --       = (agent, queryMessage) : oldMessageList
-  --       -- ^ This is where you keep track of the message comming from agent
-  --     newMessages =
-  --       foldr (\(neighbor, message) -> Map.adjust (ins message) neighbor)
-  --       clearConsideredMessages forwardMessages
 
-    -- (caughtAses, network & networkAses .~ updatedAses & networkMessages .~ newMessages)
   return ()
 
 sendMessage :: MonadState NetworkData m => AS -> AS -> Query -> m ()
 sendMessage from to query = networkMessages . ix to %= addQuery
   where addQuery messages = (from,query) : messages
 
-
 -- | Return value is messages to forward
 processMessage :: (MonadWriter [AS] m, MonadState NetworkData m) =>
   AS -> AS -> Query -> m [(AS, Query)]
 processMessage agent sender query = do
   queryAnswer <- factCheckAnswerQuery agent query
-  -- traceShowM queryAnswer
   case queryAnswer of
     Just True -> return []
     Just False -> tell [view queryManipulator query] >> return []

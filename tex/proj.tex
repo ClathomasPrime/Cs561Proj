@@ -69,11 +69,22 @@
 
 
 \section{Introduction}
+
 \section{Previous Work}
+
 \section{Next-Hop Verification}
   \subsection{Informal Model and Assumptions}
+    Mention how in reality, nodes would inspect the dest
+    field of the IP packets. Etc. Etc.
+
   \subsection{The Protocol}
+    One subtlety to note: the ASes should maybe start out by asking
+    \emph{themselves} whatever next-hop queries they have. E.g. in {\sc GrandMa},
+    node $a$ can immediately tell that $m$ isn't telling the truth,
+    because $m$ says he forwards traffic to $a$, but doesn't.
+
 \section{Our Implementation Sketch}
+
 \section{Conclusion}
 
 \bibliography{proj}{}

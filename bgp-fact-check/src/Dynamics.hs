@@ -18,18 +18,24 @@ import Monad
 
 import Debug.Trace
 
-bgpConverge :: NetworkData -> Maybe NetworkData
-bgpConverge network = bgpConverge' 20 network (bgpStepAllAct' network)
+bgpConvergeAllAct :: NetworkData -> Maybe NetworkData
+bgpConvergeAllAct network = bgpConverge' 20 network (bgpStepAllAct network)
   where bgpConverge' _ prev current
           | prev `equalRoutingTables` current = Just current
         bgpConverge' 0 _ _
           = Nothing
         bgpConverge' i _ current
-          = bgpConverge' (i-1) current (bgpStepAllAct' current)
-        bgpStepAllAct' = undefined
+          = bgpConverge' (i-1) current (bgpStepAllAct current)
 
-bgpStepAllAct :: (Activator m, MonadState NetworkData m) => m ()
-bgpStepAllAct = undefined
+        bgpStepAllAct :: NetworkData -> NetworkData
+        bgpStepAllAct net = execState bgpStep net
+        -- ^ casts bgpStep to use StateT NetworkData Identity
+        -- (i.e Identity Activator Monad)
+
+bgpStep :: (Activator m, MonadState NetworkData m) => m ()
+bgpStep = do
+  activatedAgents <- activate =<< use networkAsNumbers
+  mapM_ bgpActivation activatedAgents
   -- mapM_ =<< use networkAsNumbers
   -- foldl bgpActivation network $ view networkAsNumbers network
 
@@ -45,6 +51,7 @@ bgpUpdateRouteToDest :: MonadState NetworkData m => AS -> AS -> m ()
 bgpUpdateRouteToDest agent dest
   | agent == dest = return ()
 bgpUpdateRouteToDest agent dest = do
+  -- traceShowM (agent,dest)
   Just neighbors <- use (networkTopology . at agent)
   otherAses <- use networkAses
   let neighborData = Map.filterWithKey (\k _ -> k `elem` neighbors) otherAses
@@ -66,6 +73,7 @@ bgpUpdateRouteToDest agent dest = do
         , rank <- maybeToList $ view asPathPref agentData p]
       favoritePath = snd $ maximum $ (-1, []) : rankedPaths
       updateForward s = updateForwardTable s dest favoritePath
+  -- traceShowM favoritePath
 
   (networkAses . ix agent) %= updateForward -- network
       -- network {

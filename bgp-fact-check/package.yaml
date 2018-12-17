@@ -19,9 +19,7 @@ dependencies:
   - pretty-simple
   - lens
   - random
-  - MonadRandom
-  - rvar
-  - random-extras >= 0.19
+  - array
 
 executables:
   bgp-fact-check:

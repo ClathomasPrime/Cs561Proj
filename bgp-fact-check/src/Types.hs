@@ -81,8 +81,13 @@ data AsData = AsData
 makeLenses ''AsData
 
 instance Show AsData where
-  show d = show (view asNumber d)
-  -- ^ TODO: not this.
+  show d = "AsData " ++ show (view asNumber d)
+    ++ " (Forwarding: " ++ show (view asForwardTable d)
+    ++ if not $ null prevQs
+          then ", PreviousQueries: " ++ show prevQs
+          else ""
+    ++ ")"
+    where prevQs = view asPreviousQueries d
 
 --------------------------------------------------------------------------------
 -- The network
@@ -108,6 +113,6 @@ equalRoutingTables net1 net2
 
 emptyNetworkMessages :: NetworkData -> Bool
 emptyNetworkMessages network
-  = allOf (networkMessages) null network
+  = all null (view networkMessages network)
   -- ^ test this maybe sense refactor..
 

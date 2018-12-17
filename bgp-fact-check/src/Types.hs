@@ -1,10 +1,14 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Types where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Control.Lens
+import Control.Lens.TH
+
 
 --------------------------------------------------------------------------------
 
@@ -22,10 +26,11 @@ type Path = [AS]
 --   | AnswerForward { getQuery :: Query, returnPath :: Path, answer :: Bool }
 
 data Query = Query
-  { queryManipulator :: AS
-  , queryNextHop :: AS
-  , queryDestination :: AS
+  { _queryManipulator :: AS
+  , _queryNextHop :: AS
+  , _queryDestination :: AS
   } deriving(Show, Eq, Ord, Read)
+makeLenses ''Query
 
 --------------------------------------------------------------------------------
 -- "Behavioral"
@@ -39,7 +44,7 @@ data ExportStrategy
   -- ^ requester -> dest ->
   --   ((Nothing if request denied,
   --     Just [] for claim "I have no path", Just path o.w.))
-  -- ^ Note: we almost certainly want to let manipulators tell the true
+  -- ^ Note: we almost certainly want to let manipulators tell the truth
   -- based on certain conditions... maybe play this by ear.
 
 data QueryStrategy
@@ -51,10 +56,6 @@ type PathPref = Path -> Maybe Double
 -- ^ NOTE: Must satisfy:
 --   - [] -> Just 0
 
--- type AttractionPref = [Path] -> Double
-  -- ^ todo: maybe this type isn't right
-  -- ^ todo: maybe this should go into BgpStrategizer.
-
 --------------------------------------------------------------------------------
 -- One AS
 --------------------------------------------------------------------------------
@@ -62,29 +63,25 @@ type PathPref = Path -> Maybe Double
 -- | hardcoded and static per each AS
 data AsData = AsData
   -- | These first things should be relatively static:
-  { asNumber :: AS
-  , asExportStrategy :: ExportStrategy
+  { _asNumber :: AS
+  , _asExportStrategy :: ExportStrategy
   -- , asExportFilter :: ExportFilter
-  , asPathPref :: PathPref
+  , _asPathPref :: PathPref
   -- ^ Nothing if path isn't allowed
---, asAttractionPref :: AttractionPref
-  -- ^ I'm starting to think this won't be very useful.
-  --   The decisions made to attract traffic aren't determined
-  --   by a fixed algorithm such as BGP.
-  --   Might be better to have a ``decision making'' type
-  , asQueryStrategy :: QueryStrategy
+  , _asQueryStrategy :: QueryStrategy
 
   -- | The following should change a bunch:
 
-  , asForwardTable :: Map AS [AS]
+  , _asForwardTable :: Map AS [AS]
   -- ^ unreachable is represented by an empty list
   -- Invariant: As i should get path [i] to dest i.
-  , asPreviousQueries :: [Query]
+  , _asPreviousQueries :: [Query]
   -- ^ Queries you've already considered
   }
+makeLenses ''AsData
 
 instance Show AsData where
-  show d = show (asNumber d)
+  show d = show (view asNumber d)
   -- ^ TODO: not this.
 
 --------------------------------------------------------------------------------
@@ -92,23 +89,25 @@ instance Show AsData where
 --------------------------------------------------------------------------------
 
 data NetworkData = NetworkData
-  { networkAsNumbers :: [AS]
-  , networkTopology :: Map AS [AS]
+  { _networkAsNumbers :: [AS]
+  , _networkTopology :: Map AS [AS]
   -- ^ should be bidirectional
-  , networkMessages :: Map AS [(AS,Query)]
+  , _networkMessages :: Map AS [(AS,Query)]
   -- ^ Confusingly, this is not used for normal BGP operation,
   -- just for next-hop queries
-  , networkAses :: Map AS AsData
+  , _networkAses :: Map AS AsData
   } deriving(Show)
+makeLenses ''NetworkData
 
 equalRoutingTables :: NetworkData -> NetworkData -> Bool
 equalRoutingTables net1 net2
   = Map.foldl (&&) True
-    $ Map.intersectionWith compareAses (networkAses net1) (networkAses net2)
+    $ Map.intersectionWith compareAses (view networkAses net1) (view networkAses net2)
   where compareAses state1 state2 =
-          asForwardTable state1 == asForwardTable state2
+          view asForwardTable state1 == view asForwardTable state2
 
 emptyNetworkMessages :: NetworkData -> Bool
 emptyNetworkMessages network
-  = Map.foldl (\b ms -> b && null ms) True (networkMessages network)
+  = allOf (networkMessages) null network
+  -- ^ test this maybe sense refactor..
 

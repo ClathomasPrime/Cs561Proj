@@ -30,8 +30,8 @@
 % \renewcommand{\qedsymbol}{\filledbox}
 
 \title{
-  You can't handle the lie: \\
-  Catching lying actors in the BGP protocol 
+  You Can't Handle the Lie: \\
+  Next-Hop Verification in BGP
 }
 \author{
   Clay Thomas\\ claytont@cs.princeton.edu
@@ -40,27 +40,48 @@
 }
 \maketitle
 
-In many BGP networks, nodes can get their preferred path
-by advertising a certain path, but forwarding traffic along another.
-However, in many of the example networks from the literature,
-other nodes can collectively detect these lies
-by comparing the route that is advertised (known by the node
-the manipulator lies to)
-to the route actually taken
-(known by the node the manipulator actually forwards traffic to).
-We want to study the conditions under which nodes
-can lie without being detected,
-as well as the economic incentives of other nodes to collaboratively
-check each other (such as providers helping customers detect liars).
+\begin{abstract}
+  The main goal of this work is to provide evidence for the following
+  claim: corroborating facts from the data plane and control plane
+  can improve the incentive properties of BGP.
+\end{abstract}
 
-Our thinking is primarily based on the routing games model of
-\cite{RoutingGames}, where node's objectives are simply to get
-better paths to a destination.
-Additional consideration is given to the model
-of \cite{Attraction}, where nodes seek to attract traffic as
-well as get better paths.
+  % Needs some rewriting and redistribution::
+  In \cite{RoutingGames}, the authors take a popular
+  and well-studied extension of BGP,
+  and study how it interacts with incentive properties.
+  Their central claim of the authors is
+  that BGP with path verification (such as S-BGP) has
+  simple incentive properties: assuming all other nodes tell the truth,
+  no node (or group of nodes) can lie in order to get strictly better routes.
+  However, in \cite{Attraction} it is demonstrated that in realistic models
+  nodes have incentives to lie in order to \emph{attract traffic}, e.g.
+  ISP attracting traffic from customers.
+  One idea of \cite{Attraction} is to find the simplest set of criterion
+  needed for incentive-compatibility to hold, including the
+  simplest form of verification required.
+  They find that in some settings, a simple form of verification known
+  as \emph{loop verification} suffices.
+  Our work is motivated by the question:
+  \emph{What is the simplest form of verification needed to provide
+  good incentive properties of BGP?}
+  We call the form of verification we came up with Next-Hop verification.
 
-\section{Definitions}
+
+\section{Introduction}
+\section{Previous Work}
+\section{Next-Hop Verification}
+  \subsection{Informal Model and Assumptions}
+  \subsection{The Protocol}
+\section{Our Implementation Sketch}
+\section{Conclusion}
+
+\bibliography{proj}{}
+\bibliographystyle{alpha}
+
+\appendix
+
+\section{Formal Definitions}
   We follow the model of \cite{RoutingGames} and \cite{AgtBookDistributed},
   and start with the following model.
 
@@ -103,9 +124,5 @@ well as get better paths.
   This means that, if all nodes other than $m$ are fully collaborative and
   honest, the nodes will be able to detect $m$'s lie
   by communicating along the links that already exist in the network.
-
-
-\bibliography{proj}{}
-\bibliographystyle{alpha}
 
 \end{document}

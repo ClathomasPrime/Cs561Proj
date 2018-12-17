@@ -15,10 +15,13 @@ dependencies:
   - base >= 4.7 && < 5
   - containers
   - mtl
-  - random
   - safe
   - pretty-simple
   - lens
+  - random
+  - MonadRandom
+  - rvar
+  - random-extras >= 0.19
 
 executables:
   bgp-fact-check:

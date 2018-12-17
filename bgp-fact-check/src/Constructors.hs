@@ -13,13 +13,13 @@ import Types
 
 emptyAsData :: [AS] -> AS -> AsData
 emptyAsData ases agent = AsData
-  { asNumber = agent
-  , asExportStrategy = HonestFilteredExport $ exportAllOrNothing []
-  , asPathPref = noPolicy
-  , asQueryStrategy = HonestAnswerQueries
-  , asForwardTable = Map.fromList $
+  { _asNumber = agent
+  , _asExportStrategy = HonestFilteredExport $ exportAllOrNothing []
+  , _asPathPref = noPolicy
+  , _asQueryStrategy = HonestAnswerQueries
+  , _asForwardTable = Map.fromList $
       (agent,[agent]) : [(j,[]) | j <- ases \\ [agent]]
-  , asPreviousQueries = []
+  , _asPreviousQueries = []
   }
 
 -- For make `networkTopology` undirected

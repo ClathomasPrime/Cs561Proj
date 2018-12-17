@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3814ed0e75e328d87f96361b9792b6a2d0c242ec5e1bf79a6220014bb6474ebd
+-- hash: d333939f57d3384bdeb02a59bc8145180dfc8e0c2cb6b6c8a53e313631c30387
 
 name:           bgp-fact-check
 version:        0.1.0.0
@@ -25,17 +25,21 @@ executable bgp-fact-check
       Dynamics
       Examples
       FactCheck
+      Monad
       Strategies
       Types
       Paths_bgp_fact_check
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      MonadRandom
+    , base >=4.7 && <5
     , containers
     , lens
     , mtl
     , pretty-simple
     , random
+    , random-extras >=0.19
+    , rvar
     , safe
   default-language: Haskell2010

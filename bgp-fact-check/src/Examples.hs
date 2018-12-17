@@ -8,6 +8,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Control.Lens
 
 import Types
 import Constructors
@@ -16,19 +17,19 @@ import FactCheck
 
 genericDataState :: [AS] -> AS -> PathPref -> AsData
 genericDataState asNums i prefs =
-  (emptyAsData asNums i) { asPathPref = prefs }
+  set asPathPref prefs (emptyAsData asNums i)
 
 badGadget :: NetworkData
 badGadget = NetworkData
-  { networkAsNumbers = asNums
-  , networkTopology = reflexivize $ Map.fromList
+  { _networkAsNumbers = asNums
+  , _networkTopology = reflexivize $ Map.fromList
       [ (0, [1,2,3])
       , (1, [2,3])
       , (2, [4])
       , (3, [4])
       ]
-  , networkMessages = Map.fromList . fmap (,[]) $ asNums
-  , networkAses = Map.fromList
+  , _networkMessages = Map.fromList . fmap (,[]) $ asNums
+  , _networkAses = Map.fromList
       [(i, dataState i) | i <- asNums]
   }
   where asNums = [0..4]
@@ -47,11 +48,11 @@ badGadget = NetworkData
 
 inconsistentPolicyHonest :: NetworkData
 inconsistentPolicyHonest = NetworkData
-  { networkAsNumbers = asNums
-  , networkTopology = reflexivize $ Map.fromList
+  { _networkAsNumbers = asNums
+  , _networkTopology = reflexivize $ Map.fromList
       [ (1, [2,3,4]) , (2, [3]) , (3, [4]) ]
-  , networkMessages = Map.fromList . fmap (,[]) $ asNums
-  , networkAses = Map.fromList
+  , _networkMessages = Map.fromList . fmap (,[]) $ asNums
+  , _networkAses = Map.fromList
       [(i, dataState i) | i <- asNums]
   }
   where asNums = [1,2,3,4]
@@ -67,11 +68,11 @@ inconsistentPolicyHonest = NetworkData
 
 inconsistentPolicyManip :: NetworkData
 inconsistentPolicyManip = NetworkData
-  { networkAsNumbers = asNums
-  , networkTopology = reflexivize $ Map.fromList
+  { _networkAsNumbers = asNums
+  , _networkTopology = reflexivize $ Map.fromList
       [ (1, [2,3,4]) , (2, [3]) , (3, [4]) ]
-  , networkMessages = Map.fromList . fmap (,[]) $ asNums
-  , networkAses = Map.fromList
+  , _networkMessages = Map.fromList . fmap (,[]) $ asNums
+  , _networkAses = Map.fromList
       [(i, dataState i) | i <- asNums]
   }
   where asNums = [1,2,3,4]
@@ -79,12 +80,12 @@ inconsistentPolicyManip = NetworkData
 
         dataState i@1 =
           (emptyAsData asNums i)
-            { asNumber = i
-            , asExportStrategy = ManipulatorExport . curry $
+            { _asNumber = i
+            , _asExportStrategy = ManipulatorExport . curry $
                 \case (4,3) -> Just [1,3]
                       _ -> Nothing
-            , asPathPref = policyExplicitSingleDest 3 [[1,2,3], [1,3]]
-            , asQueryStrategy = ManipulatorAnswerQueries
+            , _asPathPref = policyExplicitSingleDest 3 [[1,2,3], [1,3]]
+            , _asQueryStrategy = ManipulatorAnswerQueries
             }
 
         dataState 2 = genericDataState' 2

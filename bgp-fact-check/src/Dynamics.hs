@@ -1,4 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Dynamics where
 
 import Data.Maybe
@@ -12,52 +14,40 @@ import Safe.Foldable
 import Control.Lens
 
 import Types
+import Monad
 
 import Debug.Trace
 
--- (This is a possible idea if we make a monad stack)
--- class Monad m => Activator m where
---   activated :: [a] -> m [a]
---
--- instance Activator Identity where
---   activated = Identity
---
--- instance Activator IO where
---   activated = filterM randIO
---     where randIO _ = randomRIO (True, False)
-
 bgpConverge :: NetworkData -> Maybe NetworkData
-bgpConverge network = bgpConverge' 20 network (bgpStepAllAct network)
+bgpConverge network = bgpConverge' 20 network (bgpStepAllAct' network)
   where bgpConverge' _ prev current
           | prev `equalRoutingTables` current = Just current
         bgpConverge' 0 _ _
           = Nothing
         bgpConverge' i _ current
-          = bgpConverge' (i-1) current (bgpStepAllAct current)
+          = bgpConverge' (i-1) current (bgpStepAllAct' current)
+        bgpStepAllAct' = undefined
 
-bgpStepAllAct :: NetworkData -> NetworkData
-bgpStepAllAct network@(NetworkData{..}) =
-  foldl bgpActivation network networkAsNumbers
+bgpStepAllAct :: (Activator m, MonadState NetworkData m) => m ()
+bgpStepAllAct = undefined
+  -- mapM_ =<< use networkAsNumbers
+  -- foldl bgpActivation network $ view networkAsNumbers network
 
 -- | An activated AS will:
 --    1) update it routing table by looking at all its neighbors
 --    2) read and respond to query messages
-bgpActivation :: NetworkData -> AS -> NetworkData
-bgpActivation network@(NetworkData{..}) agent =
-  let -- Just messages = Map.lookup agent networkMessages
-      -- ^ do nothing with this so far
+bgpActivation :: MonadState NetworkData m => AS -> m ()
+bgpActivation agent =
+  let updateDest d = bgpUpdateRouteToDest agent d
+   in mapM_ updateDest =<< use networkAsNumbers
 
-      updateDest ntw d = bgpUpdateRouteToDest ntw agent d
-      updatedForwardTables = foldl updateDest network networkAsNumbers
-
-   in updatedForwardTables
-
-bgpUpdateRouteToDest :: NetworkData -> AS -> AS -> NetworkData
-bgpUpdateRouteToDest network@(NetworkData{..}) agent dest
-  | agent == dest = network
-bgpUpdateRouteToDest network@(NetworkData{..}) agent dest =
-  let Just neighbors = Map.lookup agent networkTopology
-      neighborData = Map.filterWithKey (\k _ -> k `elem` neighbors) networkAses
+bgpUpdateRouteToDest :: MonadState NetworkData m => AS -> AS -> m ()
+bgpUpdateRouteToDest agent dest
+  | agent == dest = return ()
+bgpUpdateRouteToDest agent dest = do
+  Just neighbors <- use (networkTopology . at agent)
+  otherAses <- use networkAses
+  let neighborData = Map.filterWithKey (\k _ -> k `elem` neighbors) otherAses
       exports = Map.map (\u -> exportTo u agent dest) neighborData
       -- ^ get the path in neighbors routing tables (provided they want to export them)
 
@@ -70,31 +60,31 @@ bgpUpdateRouteToDest network@(NetworkData{..}) agent dest =
         | otherwise = (agent:p) : ps
       -- ^ add yourself to the paths
 
-      Just agentData@(AsData{..}) = Map.lookup agent networkAses
-      rankedPaths = [(rank, p)
-        | p <- availablePaths, rank <- maybeToList $ asPathPref p]
-
+  Just agentData <- use (networkAses . at agent)
+  let rankedPaths = [(rank, p)
+        | p <- availablePaths
+        , rank <- maybeToList $ view asPathPref agentData p]
       favoritePath = snd $ maximum $ (-1, []) : rankedPaths
-      updateForward path s = updateForwardTable s dest path
-   in  network {
-        networkAses = Map.adjust (updateForward favoritePath) agent networkAses
-        }
+      updateForward s = updateForwardTable s dest favoritePath
+
+  (networkAses . ix agent) %= updateForward -- network
+      -- network {
+      --   networkAses = Map.adjust (updateForward favoritePath) agent networkAses
+      --   }
 
 --------------------------------------------------------------------------------
 
 updateForwardTable :: AsData -> AS -> Path -> AsData
 updateForwardTable asData dest path
-  = asData { asForwardTable =
-    Map.alter addPath dest (asForwardTable asData) }
-  where addPath _ = Just path
+  = set (asForwardTable . at dest) (Just path) asData
 
 -- | emit `Nothing' if request for a path denied
 -- emit `Just []' if no path yet in forward table.
 exportTo :: AsData -> AS -> AS -> Maybe Path
-exportTo agentData@(AsData{..}) requester dest =
-  case asExportStrategy of
+exportTo agentData requester dest =
+  case view asExportStrategy agentData of
     HonestFilteredExport exportFilter ->
-      let Just path = Map.lookup dest asForwardTable
+      let Just path = Map.lookup dest (view asForwardTable agentData)
        in if exportFilter requester path
              then Just path
              else Nothing
@@ -107,9 +97,9 @@ exportTo agentData@(AsData{..}) requester dest =
 realPathToDest :: NetworkData -> AS -> AS -> Maybe Path
 realPathToDest _ source dest
   | source == dest = Just [dest]
-realPathToDest network@(NetworkData{..}) source dest =
-  let Just sourceState = Map.lookup source networkAses
-   in case Map.lookup dest (asForwardTable sourceState) of
+realPathToDest network source dest =
+  let Just sourceState = view (networkAses . at source) network
+   in case Map.lookup dest (view asForwardTable sourceState) of
         Nothing -> Nothing
         Just [] -> Nothing
         Just (nextHop:_) -> fmap (source :) (realPathToDest network nextHop dest)

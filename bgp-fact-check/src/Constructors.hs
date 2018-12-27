@@ -17,6 +17,7 @@ emptyAsData ases agent = AsData
   , _asExportStrategy = HonestFilteredExport $ exportAllOrNothing []
   , _asPathPref = noPolicy
   , _asQueryStrategy = HonestAnswerQueries
+  , _asForwardStrategy = HonestForwardByTable
   , _asForwardTable = Map.fromList $
       (agent,[agent]) : [(j,[]) | j <- ases \\ [agent]]
   , _asPreviousQueries = []
@@ -59,10 +60,10 @@ policyExplicitSingleDest :: AS -> [Path] -> PathPref
 policyExplicitSingleDest dest prefList
   = specializeForDest dest (policyExplicitList prefList) noPolicy
 
+
 -- =============================================================================
 -- ``Behavioral'' constructors
 -- =============================================================================
-
 
 --------------------------------------------------------------------------------
 -- Export Filters
@@ -82,8 +83,8 @@ exportAllOrNothing allowed as _ = as `elem` allowed
 policyNextHop :: [AS] -> PathPref
 policyNextHop neighbors (u:a:as) =
   case elemIndex a neighbors of
-       Nothing -> Nothing -- << Not allowed to route through
-       Just i -> Just . fromIntegral $ length (a:as) - i
+    Nothing -> Nothing -- << Not allowed to route through
+    Just i -> Just . fromIntegral $ length neighbors - i
 policyNextHop neighbors _ = Just 0
 -- ^ length zero path must be allowed in case you can't reach dest
 -- ^ length one path == you are the destination
@@ -91,19 +92,3 @@ policyNextHop neighbors _ = Just 0
 policyDifferentialNextHop :: [(AS, [AS])] -> PathPref
 policyDifferentialNextHop = undefined
 -- ^ for each destination, the prefered next-hop can change.
-
-
---------------------------------------------------------------------------------
--- Attraction Preferences
--- type AttractionPref = Path -> Double
-
--- attractNothing :: AttractionPref
--- attractNothing _ = 0
---
--- attractVolume :: [AS] -> AttractionPref
--- attractVolume victims paths =
---   fromIntegral . length . filter (\v -> any (v `elem`) paths) $ victims
---
--- attractNextHop :: [AS] -> AttractionPref
--- attractNextHop = undefined
--- -- ^ customer attraction is a special case of this, I think

@@ -8,6 +8,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Lens
 import Control.Lens.TH
+import Data.Function
 
 
 --------------------------------------------------------------------------------
@@ -40,8 +41,8 @@ type ExportFilter = AS -> Path -> Bool
 
 data ExportStrategy
   = HonestFilteredExport ExportFilter
-  | ManipulatorExport (AS -> AS -> Maybe Path)
-  -- ^ requester -> dest ->
+  | ManipulatorExport (Map AS Path -> AS -> AS -> Maybe Path)
+  -- ^ forward table -> requester -> dest ->
   --   ((Nothing if request denied,
   --     Just [] for claim "I have no path", Just path o.w.))
   -- ^ Note: we almost certainly want to let manipulators tell the truth
@@ -56,6 +57,10 @@ type PathPref = Path -> Maybe Double
 -- ^ NOTE: Must satisfy:
 --   - [] -> Just 0
 
+data ForwardStrategy
+  = HonestForwardByTable
+  | ManipulatorForwardHardcoded [AS]
+
 --------------------------------------------------------------------------------
 -- One AS
 --------------------------------------------------------------------------------
@@ -69,10 +74,11 @@ data AsData = AsData
   , _asPathPref :: PathPref
   -- ^ Nothing if path isn't allowed
   , _asQueryStrategy :: QueryStrategy
+  , _asForwardStrategy :: ForwardStrategy
 
   -- | The following should change a bunch:
 
-  , _asForwardTable :: Map AS [AS]
+  , _asForwardTable :: Map AS Path
   -- ^ unreachable is represented by an empty list
   -- Invariant: As i should get path [i] to dest i.
   , _asPreviousQueries :: [Query]
@@ -82,12 +88,19 @@ makeLenses ''AsData
 
 instance Show AsData where
   show d = "AsData " ++ show (view asNumber d)
-    ++ " (Forwarding: " ++ show (view asForwardTable d)
+    ++ " (Forwarding: " ++ showForwards (view asForwardTable d)
     ++ if not $ null prevQs
           then ", PreviousQueries: " ++ show prevQs
           else ""
     ++ ")"
     where prevQs = view asPreviousQueries d
+
+showForwards :: Map AS [AS] -> String
+showForwards table = show . filter phi $ Map.toList table
+  where phi (_, []) = False
+        phi (a, [b])
+          | a == b = False
+        phi _ = True
 
 --------------------------------------------------------------------------------
 -- The network

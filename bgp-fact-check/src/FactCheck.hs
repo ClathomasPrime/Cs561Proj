@@ -38,7 +38,7 @@ factCheckConvergeAllAct network
           | otherwise =
             let (caught, net') = factCheckStepAllAct net
                 res = factCheckConverge' (i-1) net'
-             in fmap (caught++) res
+             in traceShowId $ fmap (caught++) res
 
         -- | casts factCheckStep to use Identity Activator
         factCheckStepAllAct :: NetworkData -> ([AS], NetworkData)
@@ -130,9 +130,14 @@ asesForwardingHere agent dest = do
       forwardsToAgent n = do
         Just as <- use (networkAses . at n)
         let Just pathOfN = view (asForwardTable . at dest) as
-        case pathOfN of
-          (_:nextHop:_) -> return $ nextHop == agent
-          _ -> return False
+            forwardsByTable = case pathOfN of
+              (_:nextHop:_) -> nextHop == agent
+              _ -> False
+            forwardsByManip = case view asForwardStrategy as of
+              HonestForwardByTable -> False
+              ManipulatorForwardHardcoded fwds -> n `elem` fwds
+        return $ forwardsByTable || forwardsByManip
+
   asNums <- use networkAsNumbers
   filterM forwardsToAgent asNums
 

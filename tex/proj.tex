@@ -17,6 +17,7 @@
 % \usepackage{algorithm}
 % \usepackage{algorithmicx}
 
+\newcommand{\R}{\mathbb{R}}
 \newcommand{\N}{\mathbb{N}}
 \newcommand{\Z}{\mathbb{Z}}
 
@@ -84,56 +85,292 @@
     because $m$ says he forwards traffic to $a$, but doesn't.
 
 \section{Our Implementation Sketch}
+  Well, the formal model below ends up basically being our implementation
+  soooooo....
 
 \section{Conclusion}
 
 \bibliography{proj}{}
 \bibliographystyle{alpha}
 
+\clearpage
 \appendix
 
-\section{Formal Definitions}
-  We follow the model of \cite{RoutingGames} and \cite{AgtBookDistributed},
-  and start with the following model.
+\section{Definition of the Game}
+  We  model BGP via a two phase, asynchronous, infinite-round game,
+  inspired by that of \cite{RoutingGames} and \cite{Attraction}.
+  The initial data is defined by a labeled graph $G = (N,L,\mathcal V)$ which has:
+  \begin{itemize}
+    \item nodes $N$ representing autonomous systems
+    \item edges $L \subseteq N\times N$ representing communication channels
+      between the autonomous systems
+    \item valuation functions $\mathcal V = \{v_i\}_{i\in N}$ for each 
+      autonomous system. If $T$ represents the final state of the game,
+      then $v_i(T) \in \R_{\ge 0}$.
+  \end{itemize}
+  Each autonomous system corresponds to an agent in the game.
+  During the game, each agent $i$ keeps a tuple $(t_i, h_i, q_i)$, where
+  \begin{itemize}
+    % \item $t : N \to Path$ represents the forwarding table of agent $i$,
+    %   satisfying the following:
+    %   \begin{itemize}
+    %     \item The path $t(d)$ corresponds to $i$'s \emph{believed}
+    %       route to destination $d$
+    %     \item If $t(d) = []$, this represents $i$ not getting a route to $d$
+    %     \item If $t(d) \ne []$, then we must have $t(d).head = i$,
+    %       and $t(d).last = d$
+    %     \item If $t(d) \ne []$, then $t(d).nexthop$ (i.e. the first non-$i$
+    %       node of $t(d)$) is the node $i$ will actually forward traffic to
+    %   \end{itemize}
+    \item $t_i : N \to \mathcal P (N(i))$ is the (next-hop)
+      forwarding table of agent $i$, where agents are able to choose multiple
+      neighbors to send traffic to\footnote{
+        This allows manipulator agents to try to ``fake'' forwarding traffic
+        as advertised, but actually send $99\%$ of their traffic down a different
+        path.
+      }
+    \item $h_i$ represents the \emph{history} of agent $i$ in the game thus far.
+      We treat $h$ as a sort of transcript without worrying much about its
+      formal representation. In particular, $h$ keeps track of the all
+      route announcements and (next-hop verification) messages received by
+      agent $i$
+    \item $q_i$ represents the \emph{next-hop queries} that agent $i$ has
+      received. We treat $q_i$ as a queue
+  \end{itemize}
+  Let the set of all such tuples for agent $i$ be denote $State_i$,
+  and let the set of states for all agents be denoted
+  $State = \{(state_1,\ldots, state_k)\}$.
 
-\section{In the \cite{RoutingGames} model, you can always catch a liar}
+  The strategy space of each agent $i$ is given by $(imp_i, exp_i, que_i)$, where:
+  \begin{itemize}
+    \item $imp_i : State_i \times N \times Path^{N(i)} \to 
+      \mathcal P(N(i))$ represents the 
+      import policy of $i$ (for a destination $d\in N$, and paths announced by each
+      neighbor $j\in N(i)$, adjust the forwarding table for destination $d$)
+    \item $exp_i : State_i \times N \times N(i) \to Path$ represents
+      the export policy of $i$ (for a destination $d\in N$ and neighbor $j\in N(i)$,
+      what path would you announce to $j$ (if none, return an empty path))
+    \item $que_i : State_i \times \mathcal P (N(i)) \times Query
+      \to \{True, False\} \cup (N(i)\times Query)^*$ is the query policy
+      (given that the agents $A\subseteq N(i)$ forward to you for destination
+      $d$ (as given by the query), can you confirm/deny/forward the query).
+  \end{itemize}
 
-  Intuitively, if a node lies to get a better path, the node it lies
-  to and the node it routs through must be connected.
-  The following conjecture, which we hope to prove formally,
-  makes this precise.
-  \begin{conjecture}
-    Suppose No Dispute Wheel holds, but route verification does not, and
-    assume that the network is connected.
-    Suppose that (assuming other nodes play truthfully)
-    a node $m$ can achieve a better path to $d$ by announcing
-    a route that does not exist to a node $v$.
-    Let $m$'s next hop in the manipulated routing tree be denoted $r$.
-    Then there exists a path in the network, not containing $m$,
-    between $v$ and $r$.
-    Moreover, no node along this path benefits from the manipulation
-    performed by $m$.
-  \end{conjecture}
+  Both phases of the game are controlled by an \emph{activator}
+  that schedules agents to act\footnote{
+    The activator captures the asynchronous nature of BGP.
+    Previous work \cite{PolicyPathVector, RoutingGames} has gone
+    even further than us and allowed message
+    sending and receiving to happen in a scheduled manner,
+    and allowing multiple agents to act simultaneously.
+    We do not consider activation order in this level of detail.
+  }. The activator must pick every agent infinitely often
+  (this property is called being ``fair''),
+  but other than that we assume the activator is completely adversarial,
+  i.e. our positive results must hold for every fair activation sequence.
+  During phase one, the activator picks an agent $i$ to act,
+  and $i$ updates $t$ and $h$ from
+  $state_i=(t,h,q)$ by performing the following actions
+  for each $d\in N$:
+  \begin{itemize}
+    \item For each $j\in N(i)$, let $e(j) = exp_j(state_j, d, i)$
+      denote the (possibly empty) path $j$ wants to export to $i$
+      for destination $d$
+    \item Update $t(d) := imp_i(state_i, d, e)$
+    \item Update $h_i$ recording all observed exports and action chosen by $i$
+  \end{itemize}
+  The above is repeated until the following condition is reached:
+  no node would change its forwarding table if activated.
+  This is called reaching convergence.
+
+  Up until now, everything in this model has been previously considered.
+  We introduce phase two to capture the execution of next-hop verification,
+  where nodes send around queries to try and detect lies,
+  i.e. mismatches between the control and data plane.
+  A query $Q(m,r,d) \in Query$ contains the following data:
+  \begin{itemize}
+    \item A potential manipulator $m$
+    \item An announced next-hop $r$
+    \item A destination $d$
+  \end{itemize}
+  Phase two starts after reaching convergence (formally, something)
+  after which each node $i$ starts with the query $Q(m,r,d)$ for every
+  destination node $d$ and every single hop $[m,r]$ on the route
+  that $i$ has installed for destination $d$.
+  During phase two, the activator picks a node $i$ to act,
+  and $i$ updates $h$ and $q$ from $state_i=(t,h,q)$ by performing the following
+  for each $query \in q$:
+  \begin{itemize}
+    \item If $que_i(state_i, fwds_i, query) = True$, do nothing
+    \item If $que_i(state_i, fwds_i, query) = False$, then the
+      ``potential manipulator'' $m$ of $query$ is ``shamed''
+      and given utility $-\infty$
+    \item Otherwise, $que_i(state_i, fwds_i, query) \in (N(i)\times Query)^*$
+      gives a list of pairs $(j, query_j)$.
+      For each such element of the list, add $query_j$ to the queue $q_j$
+      of agent $j\in N(i)$.
+  \end{itemize}
+  Finally, update $q = []$ to the empty queue.
+
+  At the conclusion of the game, utilities are calculated as follows:
+  \begin{itemize}
+    \item If convergence is not reached, all nodes receive utility $-\infty$
+    \item If a node was ``shamed'' during the next-hop phase,
+      it receives utility $-\infty$
+    \item Otherwise, node $i$ gets utility $v_i(State)$
+  \end{itemize}
+
+\section{Definitions of Strategies and Classes of Instances}
+  Let $v$ denote the valuation function of a node $i$.
+  Let $T$ be the final state of a game, and let $P$ be the path
+  $v$ gets to destination $d$. We assume $v$ is of the form
+  $v(T) = u(P) + \alpha(T)$, where $\alpha$ is the 
+  \emph{attraction function} that indicates what $i$ cares about
+  other than getting a good path to $d$.
+  We say that:
+  \begin{itemize}
+    \item $i$ is attractionless if $v(T) = u(P)$, i.e. $\alpha(T) = 0$.
+    \item $i$ has volume attraction if $\alpha(T)$ is a function
+      of the set of nodes whose path to $d$ includes $i$
+    \item $i$ has next-hop attraction if $\alpha(T)$ is a function
+      of the set of neighbors of $i$ who route directly through $i$
+      as their next-hop
+  \end{itemize}
+
+  Let $strat = (imp, exp, que)$ denote the strategy profile of a node
+  $i$ with valuation function $v$.
+  We say that:
+  \begin{itemize}
+    \item $strat$ is \emph{honest} if $imp$ simply selects the highest-ranked
+      path according to $v$ which is announced to $i$, and
+      $exp$ only announces the current favorite
+      path to the destination that node $i$ is currently using according to $imp$.
+      Note that $exp$ is allowed to arbitrarily 
+    \item $strat$ is a \emph{next hop participant} if $que$ implements
+      next-hop verification fully and honestly, as described in
+      previous sections
+  \end{itemize}
+
+  % Finally, we can formally define \emph{no incentive to lie} condition,
+  % similarly to \cite{Attraction}:
+  % \begin{definition}
+  %   For some instance $G$ of a BGP network, there is \emph{no incentive to lie}
+  %   when 
+  % \end{definition}
+  % We introduce the 
+
+  Like \cite{Attraction} ((add the random lavi-nisan paper)),
+  the correct ``solution concept'' for us is that of \emph{Set ex-post
+  Nash equilibrium}.
+  \begin{definition}
+    Let $(S_1, \ldots, S_n)$ denote sets of strategies for players $1,\ldots,n$,
+    i.e. each $s\in S_i$ is a function from the private information of $i$
+    to a strategy.
+    Then $(S_1, \ldots, S_n)$ is a \emph{Set ex-post Nash equilibrium} if
+    for each player $i$ and each $\vec s _{-i} \in \vec S_{-i}$,
+    there exists some $s^* \in S_i$ such that
+    for \emph{all arbitrary strategies} $t$, we have
+    \begin{align*}
+      v_i( g_{act}( s^*(v_i), s_{-i}(v_{-i}) ) )
+      \ge v_i( g_{act}( t, s_{-i}(v_{-i}) ) )
+    \end{align*}
+    for every set of valuations $\vec v$ and every fair activation sequence $act$.
+  \end{definition}
+
+
+\section{Proofs}
+  ((TODO: be better))
+
+  First, we start with a lemma that shows why next-hop verification is so
+  powerful.
+  \begin{lemma}
+    Let $G$ be a BGP instance with the next-hop verification phase.
+    Suppose all nodes except one manipulator $m$ are next-hop participants.
+    Suppose that $m$ announces a next-hop of $r$ to node $n$,
+    but actually uses $p\ne r$ in the data plane.
+    Furthermore, suppose there exists a path from $n$ to $p$ not containing $m$.
+    Then $m$ with be caught by next-hop verification, and will
+    receive utility $-\infty$.
+  \end{lemma}
   \begin{proof}
-    For the sake of contradiction, assume that all paths between $r$
-    and $v$ include $m$.
-    One of $r$ or $v$ is on the ``same side of $m$'' as the destination
-    node $d$.
-    There must be a path from $r$ to $d$ not containing $m$,
-    because $m$ cannot appear twice on it route to $d$ in the manipulated tree.
-    Thus, every path from $v$ to $d$ must contain $m$.
-
-    Let $T$ denote the original routing tree, and for each node $n$
-    let $T_n$ denote the path $n$ receives to the destination.
-    Let $M_n$ denote the advertised route that $n$ selects in the manipulated
-    routing tree, i.e. the route $n$ believes it receives,
-    while $\widetilde M$ is the actual manipulated routing tree and 
-    $\widetilde M_n$ is the actual route $n$'s traffic follows.
-    Note that the path $M_n$ need not actually exist in the graph.
+    The query goes along the path.
   \end{proof}
 
-  This means that, if all nodes other than $m$ are fully collaborative and
-  honest, the nodes will be able to detect $m$'s lie
-  by communicating along the links that already exist in the network.
+  Our first result formalizes ``when nodes are attractionless,
+  there is no incentive to deviate from honest BGP with next-hop verification''.
+  \begin{theorem}
+    Let $G$ be an attractionless BGP instance with next-hop verification.
+    Let $S = (S_1, \ldots, S_n)$ be the set of all honest, next hop participating
+    strategies.
+    Then $S$ is a set ex-post Nash equilibrium.
+  \end{theorem}
+  \begin{proof}
+    If not, then every path from $victim$ to $realNextHop$ goes through $m$.
+    However, this means no simple path from $m$ to $d$ can contain $victim$,
+    or any of the nodes that $victim$ could directly effect without routing
+    through $m$. Thus, $m$ could not have actually gotten a better path
+    through the lie.
+  \end{proof}
+
+  The following theorem formalizes our claim ``nodes have no incentive
+  to deviate from honest BGP when next-hop verification is used,
+  even when nodes have volume attraction''.
+  \begin{theorem}
+    Let $G$ be a BGP instance with next-hop verification and traffic
+    volume attraction.
+    Let $S = (S_1, \ldots, S_n)$ be the set of all honest, next hop participating
+    strategies. 
+    Then $S$ is a set ex-post Nash equilibrium.
+  \end{theorem}
+  \begin{proof}
+    As shown before, $m$ cannot get a better path. We show further
+    that $m$ cannot attract more traffic (in volume).
+    Suppose $m$ did manage to attract more traffic from a victim $v$.
+    Then, if $P$ denotes the path $v$ originally took to $d$,
+    then $P$ does not contain $m$. Because $v$ didn't use $P$
+    in the honest situation, the node $n$ which $m$ lied to must
+    be connected to $P$ I guess. Thus, $realNextHopOfM$
+    must be connected to $d$ with a path not containing $m$,
+    and $d$ is in turn connected to the guy who heard the lie.
+    I guess.
+  \end{proof}
+
+  % Intuitively, if a node lies to get a better path, the node it lies
+  % to and the node it routs through must be connected.
+  % The following conjecture, which we hope to prove formally,
+  % makes this precise.
+  % \begin{conjecture}
+  %   Suppose No Dispute Wheel holds, but route verification does not, and
+  %   assume that the network is connected.
+  %   Suppose that (assuming other nodes play truthfully)
+  %   a node $m$ can achieve a better path to $d$ by announcing
+  %   a route that does not exist to a node $v$.
+  %   Let $m$'s next hop in the manipulated routing tree be denoted $r$.
+  %   Then there exists a path in the network, not containing $m$,
+  %   between $v$ and $r$.
+  %   Moreover, no node along this path benefits from the manipulation
+  %   performed by $m$.
+  % \end{conjecture}
+  % \begin{proof}
+  %   For the sake of contradiction, assume that all paths between $r$
+  %   and $v$ include $m$.
+  %   One of $r$ or $v$ is on the ``same side of $m$'' as the destination
+  %   node $d$.
+  %   There must be a path from $r$ to $d$ not containing $m$,
+  %   because $m$ cannot appear twice on it route to $d$ in the manipulated tree.
+  %   Thus, every path from $v$ to $d$ must contain $m$.
+
+  %   Let $T$ denote the original routing tree, and for each node $n$
+  %   let $T_n$ denote the path $n$ receives to the destination.
+  %   Let $M_n$ denote the advertised route that $n$ selects in the manipulated
+  %   routing tree, i.e. the route $n$ believes it receives,
+  %   while $\widetilde M$ is the actual manipulated routing tree and 
+  %   $\widetilde M_n$ is the actual route $n$'s traffic follows.
+  %   Note that the path $M_n$ need not actually exist in the graph.
+  % \end{proof}
+
+  % This means that, if all nodes other than $m$ are fully collaborative and
+  % honest, the nodes will be able to detect $m$'s lie
+  % by communicating along the links that already exist in the network.
 
 \end{document}

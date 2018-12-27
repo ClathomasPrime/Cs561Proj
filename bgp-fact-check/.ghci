@@ -1,0 +1,7 @@
+:{
+:def deload (\_ -> return
+   ":module \n\
+    :module + *Types *Examples *FactCheck *Constructors *Monad \n\
+    import Text.Pretty.Simple \n"
+    )
+:}

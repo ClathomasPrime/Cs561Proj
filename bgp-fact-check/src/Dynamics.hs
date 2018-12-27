@@ -90,7 +90,8 @@ exportTo agentData requester dest =
        in if exportFilter requester path
              then Just path
              else Nothing
-    ManipulatorExport strategy -> strategy requester dest
+    ManipulatorExport strategy ->
+      strategy (view asForwardTable agentData) requester dest
 
 -- | ignoring lies and stuff
 realPathToDest :: NetworkData -> AS -> AS -> Maybe Path

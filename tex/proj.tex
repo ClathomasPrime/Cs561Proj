@@ -5,13 +5,11 @@
 \usepackage{float}
 \usepackage{graphicx}
 \usepackage[margin=1in]{geometry} 
-\usepackage{amsmath,amsthm,amssymb}
+\usepackage{amsmath,amsthm,amssymb,comment}
 \usepackage[vlined,linesnumbered,ruled,resetcount]{algorithm2e}
 
 \DeclareMathOperator*{\argmax}{arg\,max}
 \DeclareMathOperator*{\val}{val}
-
-\renewcommand\thesubsection{(\alph{subsection})}
 
 % \usepackage[noend]{algpseudocode}
 % \usepackage{algorithm}
@@ -42,53 +40,102 @@
 \maketitle
 
 \begin{abstract}
-  The main goal of this work is to provide evidence for the following
-  claim: corroborating facts from the data plane and control plane
-  can improve the incentive properties of BGP.
+  This paper presents a new protocol to be run by autonomous systems in a network alongside BGP, that reduces the set of contexts in which other AS's are incentivized to announce lies about the network. We show that by using this protocol to share control-plane information between different AS's, it is possible to detect a broader class of lies than would be possible by just doing path verification (such as in S-BGP), without having to deal with the complexity of data-plane level monitoring. We also discuss the advantages and disadvantages of this new approach, as well as the contexts in which it still does not suffice.
 \end{abstract}
-
-  % Needs some rewriting and redistribution::
-  In \cite{RoutingGames}, the authors take a popular
-  and well-studied extension of BGP,
-  and study how it interacts with incentive properties.
-  Their central claim of the authors is
-  that BGP with path verification (such as S-BGP) has
-  simple incentive properties: assuming all other nodes tell the truth,
-  no node (or group of nodes) can lie in order to get strictly better routes.
-  However, in \cite{Attraction} it is demonstrated that in realistic models
-  nodes have incentives to lie in order to \emph{attract traffic}, e.g.
-  ISP attracting traffic from customers.
-  One idea of \cite{Attraction} is to find the simplest set of criterion
-  needed for incentive-compatibility to hold, including the
-  simplest form of verification required.
-  They find that in some settings, a simple form of verification known
-  as \emph{loop verification} suffices.
-  Our work is motivated by the question:
-  \emph{What is the simplest form of verification needed to provide
-  good incentive properties of BGP?}
-  We call the form of verification we came up with Next-Hop verification.
 
 
 \section{Introduction}
+Routing on the Internet involves many distinct Autonomous Systems (AS's), each with its own data sources, destinations, and links; as well as its own preferences over how traffic is routed. An AS may prefer that the traffic it sends and receives be sent over the shortest path, in order to decrease latency; or it may prefer to send its traffic through or avoiding specific other AS's for economic incentives, due to contracts between AS's about routing costs; or it may prefer to avoid certain other AS's, if it is concerned about malicious activity. In the other direction, an AS may also prefer to attract or deter traffic from certain other AS's, again for economic incentives or perhaps even to spy on certain traffic.
 
-\section{Previous Work}
+These AS's typically use the Border Gateway Protocol (BGP) to announce routes to neighbors and learn routes from neighbors in the control plane, and to then choose how to actually route traffic in the data plane. However, BGP does not actually enforce any requirement that an AS route traffic in a way that matches its announcements. Thus, due to all of the various (often conflicting) preferences that AS's have over how traffic is routed, these AS's can often have incentives to lie in the control plane about what they will actually do in the data plane.
 
-\section{Next-Hop Verification}
-  \subsection{Informal Model and Assumptions}
-    Mention how in reality, nodes would inspect the dest
-    field of the IP packets. Etc. Etc.
+We would like to be able to efficiently detect lies made by AS's in BGP announcement. However, verifying routes directly in the data plane typically involves a large overhead (CITE EXAMPLES FOR THIS, E.G. THE ONES FROM GOLDBERG). In addition, many types of lies that could be beneficial to AS's do not involve making the same lies to everyone, but rather telling distinct lies to different neighbors. As a result, if AS's are willing to collaborate then there is often information directly in the control plane that can be used to detect the existence of lies, without requiring that we monitor traffic in the data plane. In this paper we present a new protocol that we call \emph{Next-Hop Verification} which allows AS's to use this information to catch certain types of lies.
 
-  \subsection{The Protocol}
+In the rest of Section 1 we discuss existing work, and we briefly outline our results and their limitations. Section 2 informally presents the model we use, and Appendix A provides a more formal model. Section 3 describes the next-hop verification protocol, and Appendices B and C contain pieces of our implementation and proofs of theorems. Section 4 describes our results and gives examples of scenarios in which next-hop verification catches lies, whereas path and loop verification are insufficient on their own. Finally, Section 5 offers some conclusions.
+
+\subsection{Previous work}
+Much work has been done on analyzing BGP through game-theoretic models in which AS's may act strategically given their incentives. \cite{RoutingGames} shows that in a general set of contexts, a form of verification called \emph{path verification}\footnote{In the original paper they refer to it as route verification.}
+ensures that no group of AS's can get strictly better routes for its traffic by telling lies if everyone else is telling the truth.
+
+However, lying can potentially give other benefits beyond getting better routes for your own traffic. As mentioned before, an AS may also have incentives to attract or deter traffic by lying. \cite{Attraction} analyzes BGP games in the presence of these types of incentives and shows that in many scenarios, even using path verification does not suffice to disincentivize lying. They also introduce another form of verification called \emph{loop verification}, which is simpler but weaker, and describe conditions under which path and loop verification do disincentivize lying. However, they admit that many of these conditions are unreasonably strong, such as requiring that AS's only consider the immediate next hop in the path in their preferences.
+
+\subsection{Overview of our results}
+As in the papers discussed above, our new \emph{next-hop verification} protocol runs in the control plane rather than in the data plane. It also allows us to catch lies even in the context where preferences involve traffic attraction and deterrence, without using path verification or relying on the strong assumptions of \cite{Attraction}. Our general analysis of next-hop verification does however use the strong assumption that there is only a single lying agent. We also for simplicity and power focus on the situation in which everyone else participates fully, though as we will discuss the protocol would still provide value even in partial deployment. In addition, next-hop verification is ``bulkier'' than loop verification, as it essentially has to distribute information across the whole collection of AS's.
+
+
+\section{Model Details}
+Here we present an informal description of our model for the interactions between AS's. See Appendix B for a more formalized model.
+
+We model the network of AS's as an undirected graph, with a node for each AS and an edge between any two AS's that can directly communicate with each other without going through a third AS. We assume that the graph is a single connected component, so any AS can in theory interact with any other AS (although in practice, say if an intermediate AS intentionally drops traffic, this may not always actually be possible).
+
+There is a unique destination AS $d$. In practice, if $N$ is the number of AS's then one could imagine having $N$ distinct versions of the problem, each of which has a different destination AS. There also may be a unique malicious AS $m$. The goal is to 
+
+\subsection{BGP framework}
+In the BGP framework, AS's can announce the existence or removal of paths to each other. Each AS has an import policy that determines how it responds to path announcements from neighboring AS's. In this paper we ignore any concerns of storage for keeping track of all announcements from neighbors, so we assume that any newly observed path is added to a table, unless the receiving AS is already in the path. In this case it will either ignore the path announcement, or if the AS never announced the subpath containing itself it will raise an alarm that another AS has exported a false path. We also assume that on hearing an announcement, the AS can only take actions related to the full path, and not related to particular subpaths.
+
+Each AS also has an export policy which determines how it will communicate the paths it is aware of to other AS's. In some settings, such as that of (CITE GAO REXFORD) in which for example customers will not route traffic between two of their providers, an AS may prefer not to announce all of the paths it knows about to all neighbors. Relatedly, an AS may make different announcements to different neighbors.
+
+Finally, each AS has some preferences over how the actual traffic in the network flows. As in \cite{Attraction} we assume that every AS can compile their preferences into a ranking only over paths and an export policy, both of which will be static throughout the entire game. This brings us to our notion of what it means to be honest or lie.
+
+\begin{definition}
+We say that an AS \textbf{interim lies} if it announces a path that it does not plan to use, whether that path actually exists or not, or if it fails to announce the removal of a path that it had previously announced.
+
+We say that an AS is \textbf{interim honest} if it never lies.
+\end{definition}
+
+Note that under this definition an AS can hide information from neighbors while still being interim-honest.
+
+\subsection{Verification}
+As mentioned before, various methods of catching lies have been suggested in the literature.
+
+\begin{definition}
+In a network using \textbf{path verification} it is impossible for AS's to announce paths that include subpaths which have not already been announced to them.
+\end{definition}
+
+Some extensions to BGP, such as S-BGP, can enforce path verification. However, it requires additional overhead as well as universal adoption (CITE SOMETHING).
+
+\begin{definition}
+In a network using \textbf{loop verification} no AS will use an export policy that involves not sending a path to a neighbor specifically because that neighbor is already in the path.
+\end{definition}
+
+As mentioned before, when an AS receives a path announcement that already includes it, the AS can raise an alarm if it never announced the corresponding subpath. If instead export policies did not send paths to neighbors who are already in them, this detection could not always be done.
+
+Since loop verification is very minimal and easy to adopt we will assume that the network uses it. We do not assume that the network uses path verification, though we will show that \emph{next-hop verification} actually handles a larger class of scenarios than path verification would.
+
+\subsection{Convergence}
+We also need to guarantee that given the rankings and export policies chosen by the AS's, BGP will converge to a stable routing graph. In the literature this is typically done via an assumption called \emph{No Dispute Wheel}, and we adopt the same assumption. See Appendix B for more details.
+
+It is possible that some interim lies will be hard to detect. Instead, next-hop verification will focus on \emph{ex-post} honesty and lying. We often leave out the phrase ``ex-post''.
+
+\begin{definition}
+We say that an AS is \textbf{(ex-post) lying} if the stablility of the post-convergence equilibrium depends on a neighbor thinking that the AS is acting in a way that is inconsistent with the true equilibrium.
+
+We say that an AS is \textbf{(ex-post) honest} otherwise.
+\end{definition}
+
+
+\section{Next-Hop Verification Protocol}
+Once convergence has occurred, we propose the use of the following protocol by all of the AS's. Note that the malicious AS $m$ may lie to avoid being caught, but since convergence has already occurred we assume that none of the other AS's have an incentive to lie or even to hide information they know.
+
+\begin{comment}
+We can put all the details of the protocol implementation here
+
     One subtlety to note: the ASes should maybe start out by asking
     \emph{themselves} whatever next-hop queries they have. E.g. in {\sc GrandMa},
     node $a$ can immediately tell that $m$ isn't telling the truth,
     because $m$ says he forwards traffic to $a$, but doesn't.
+    
+\end{comment}
 
-\section{Our Implementation Sketch}
-  Well, the formal model below ends up basically being our implementation
-  soooooo....
+\section{Results/examples}
+\begin{comment}
+Can you add whichever theorems you think would be worth discussing in the body of the paper? We can then also add some example graphs to highlight these theorems and to contrast with path verification (either in this or a new or the previous section).
+\end{comment}
 
 \section{Conclusion}
+\begin{comment}
+Still need to decide what we should put here.
+\end{comment}
 
 \bibliography{proj}{}
 \bibliographystyle{alpha}

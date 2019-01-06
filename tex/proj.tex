@@ -4,9 +4,11 @@
 \usepackage{wrapfig}
 \usepackage{float}
 \usepackage{graphicx}
-\usepackage[margin=1in]{geometry} 
 \usepackage{amsmath,amsthm,amssymb,comment}
-\usepackage[vlined,linesnumbered,ruled,resetcount]{algorithm2e}
+\usepackage[noend]{algpseudocode}
+
+\usepackage[left=0.5in,right=2in]{geometry} 
+\usepackage[textwidth=1.5in]{todonotes}
 
 \DeclareMathOperator*{\argmax}{arg\,max}
 \DeclareMathOperator*{\val}{val}
@@ -49,7 +51,9 @@ Routing on the Internet involves many distinct Autonomous Systems (AS's), each w
 
 These AS's typically use the Border Gateway Protocol (BGP) to announce routes to neighbors and learn routes from neighbors in the control plane, and to then choose how to actually route traffic in the data plane. However, BGP does not actually enforce any requirement that an AS route traffic in a way that matches its announcements. Thus, due to all of the various (often conflicting) preferences that AS's have over how traffic is routed, these AS's can often have incentives to lie in the control plane about what they will actually do in the data plane.
 
-We would like to be able to efficiently detect lies made by AS's in BGP announcement. However, verifying routes directly in the data plane typically involves a large overhead (CITE EXAMPLES FOR THIS, E.G. THE ONES FROM GOLDBERG). In addition, many types of lies that could be beneficial to AS's do not involve making the same lies to everyone, but rather telling distinct lies to different neighbors. As a result, if AS's are willing to collaborate then there is often information directly in the control plane that can be used to detect the existence of lies, without requiring that we monitor traffic in the data plane. In this paper we present a new protocol that we call \emph{Next-Hop Verification} which allows AS's to use this information to catch certain types of lies.
+We would like to be able to efficiently detect lies made by AS's in BGP announcement. However, verifying routes directly in the data plane typically involves a large overhead (CITE EXAMPLES FOR THIS, E.G. THE ONES FROM GOLDBERG). In addition, many types of lies that could be beneficial to AS's do not involve making the same lies to everyone, but rather telling distinct lies to different neighbors. 
+\todo{This isn't accurate. Our idea is to corroborate lies lies in the control plain against the truth in the data plane. Few examples show effectiveness of checking ``different lies'' (i.e. most examples from Goldberg have the manipulator telling the same lie to every ``victim node''). See the google doc}
+As a result, if AS's are willing to collaborate then there is often information directly in the control plane that can be used to detect the existence of lies, without requiring that we monitor traffic in the data plane. In this paper we present a new protocol that we call \emph{Next-Hop Verification} which allows AS's to use this information to catch certain types of lies.
 
 In the rest of Section 1 we discuss existing work, and we briefly outline our results and their limitations. Section 2 informally presents the model we use, and Appendix A provides a more formal model. Section 3 describes the next-hop verification protocol, and Appendices B and C contain pieces of our implementation and proofs of theorems. Section 4 describes our results and gives examples of scenarios in which next-hop verification catches lies, whereas path and loop verification are insufficient on their own. Finally, Section 5 offers some conclusions.
 
@@ -88,6 +92,7 @@ Note that under this definition an AS can hide information from neighbors while 
 \subsection{Verification}
 As mentioned before, various methods of catching lies have been suggested in the literature.
 
+\todo{``impossible to announce paths which weren't announced to them'' should suffices... The subpath notion doesn't make sense to me. }
 \begin{definition}
 In a network using \textbf{path verification} it is impossible for AS's to announce paths that include subpaths which have not already been announced to them.
 \end{definition}
@@ -97,16 +102,20 @@ Some extensions to BGP, such as S-BGP, can enforce path verification. However, i
 \begin{definition}
 In a network using \textbf{loop verification} no AS will use an export policy that involves not sending a path to a neighbor specifically because that neighbor is already in the path.
 \end{definition}
+\todo{While the ``export policy'' thing is true, I think the ``shaming'' should be the highlight of definition 3}
 
 As mentioned before, when an AS receives a path announcement that already includes it, the AS can raise an alarm if it never announced the corresponding subpath. If instead export policies did not send paths to neighbors who are already in them, this detection could not always be done.
 
 Since loop verification is very minimal and easy to adopt we will assume that the network uses it. We do not assume that the network uses path verification, though we will show that \emph{next-hop verification} actually handles a larger class of scenarios than path verification would.
+\todo{Next-hop verif doesn't detect a superset of path verif, but I think
+it should detect a superset of loop verif. }
 
 \subsection{Convergence}
 We also need to guarantee that given the rankings and export policies chosen by the AS's, BGP will converge to a stable routing graph. In the literature this is typically done via an assumption called \emph{No Dispute Wheel}, and we adopt the same assumption. See Appendix B for more details.
 
 It is possible that some interim lies will be hard to detect. Instead, next-hop verification will focus on \emph{ex-post} honesty and lying. We often leave out the phrase ``ex-post''.
 
+\todo{I don't think we need this section/considerations}
 \begin{definition}
 We say that an AS is \textbf{(ex-post) lying} if the stablility of the post-convergence equilibrium depends on a neighbor thinking that the AS is acting in a way that is inconsistent with the true equilibrium.
 
@@ -117,13 +126,52 @@ We say that an AS is \textbf{(ex-post) honest} otherwise.
 \section{Next-Hop Verification Protocol}
 Once convergence has occurred, we propose the use of the following protocol by all of the AS's. Note that the malicious AS $m$ may lie to avoid being caught, but since convergence has already occurred we assume that none of the other AS's have an incentive to lie or even to hide information they know.
 
+  Each node maintains a queue of queries which it needs to answer.
+  A query is denoted $Q(a,b)$, representing a node announcing that
+  $a$ uses $b$ as its next-hop for the destination $d$.
+
+  \begin{algorithmic}
+    \Function{Initialize}{}
+      \For {each link $(a,b)$ in your path to $d$}
+        \State Add the query $Q(a,b)$ to your query queue
+      \EndFor
+    \EndFunction
+    \Function{Respond}{$Q(a,b)$}
+      \State Let the acting AS be denoted by $n$
+      \If {You have previously responded to the query $Q(a,b)$ OR if $n=a$}
+        \State \Return
+      \EndIf
+      \If { $n = b$ }
+        \If { $a$ forwards to you for destination $d$ }
+          \State \Return
+        \Else
+          \State ``raise the alarm''
+        \EndIf
+      \Else
+        \If {$a$ forwards to you for destination $d$ }
+          \State ``raise the alarm''
+        \Else
+        \State send the query $Q(a,b)$ to all neighbors (other than $a$)
+        \EndIf
+      \EndIf
+    \EndFunction
+    % \SetKwFunction{Respond}{Respond}
+    \Function{Main}{}
+      \For {each query $Q(a,b)$ in $queue$}
+        \State {\sc Respond}($Q(a,b)$)
+      \EndFor
+      \State clear the $queue$
+    \EndFunction
+
+  \end{algorithmic}
+
 \begin{comment}
 We can put all the details of the protocol implementation here
 
-    One subtlety to note: the ASes should maybe start out by asking
-    \emph{themselves} whatever next-hop queries they have. E.g. in {\sc GrandMa},
-    node $a$ can immediately tell that $m$ isn't telling the truth,
-    because $m$ says he forwards traffic to $a$, but doesn't.
+  One subtlety to note: the ASes should maybe start out by asking
+  \emph{themselves} whatever next-hop queries they have. E.g. in {\sc GrandMa},
+  node $a$ can immediately tell that $m$ isn't telling the truth,
+  because $m$ says he forwards traffic to $a$, but doesn't.
     
 \end{comment}
 

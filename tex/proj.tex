@@ -395,77 +395,94 @@ Still need to decide what we should put here.
 
 
 \section{Proofs}
-  ((TODO: be better))
-
-  First, we start with a lemma that shows why next-hop verification is so
-  powerful.
+  The following lemma is the key to our positive results.
   \begin{lemma}
     Let $G$ be a BGP instance with the next-hop verification phase.
     Suppose all nodes except one manipulator $m$ are next-hop participants.
-    Suppose that $m$ announces to node $v$ a hop of $(a,b)$
-    which is not actually used in the data plane.
-    Furthermore, suppose there exists a path from $v$ to $b$ not containing $m$.
+    Assume that $m$ announces to node $v$ a hop $(a,b)$, where in the data plane the
+    hop $(a,c)$ is used for some $b\ne c$.
+    (Note that both $b$ and $c$ may be used if $a=m$ and $m$ is ``faking traffic'').
+    %  Suppose either
+    %  a) that $m$ announces to node $v$ a hop of $(a,b)$
+    %  which is not actually used in the data plane, or
+    %  % note: (a) can be faked if m=a
+    %  b) $m$ announces a hop of $(m,x)$, but uses a hop of $(m,b)$
+    %  for some $x\ne b$.
+    Furthermore, suppose there exists a path from $v$ to $c$ not containing $m$.
     Then $m$ with be caught by next-hop verification, and will
     receive utility $-\infty$.
   \end{lemma}
   \begin{proof}
-    Let $P$ denote the path from $v$ to $b$ not containing $m$.
+    Let $P$ denote the path from $v$ to $c$ not containing $m$.
     Because the activation sequence is fair, every node along the path with
-    be activated, in the proper order going from $v$ to $b$.
+    be activated, in the proper order going from $v$ to $c$.
+    \todo{
+      Note: should probably get rid of the protocol's ability to
+      ``drop queries'' in view of a false-negative
+    }
     Node $v$ starts with the query $Q(a,b)$, and thus it will eventually travel
-    to $b$, which will ``raise the alarm'' and give all nodes $-\infty$ utility.
+    to $b$, which will ``raise the alarm'' and give $m$ utility $-\infty$.
   \end{proof}
 
   Our first result formalizes ``when nodes are attractionless,
   there is no incentive to deviate from honest BGP with next-hop verification''.
   \begin{theorem}
-    Let $G$ be an attractionless BGP instance with next-hop verification.
-    Let $S = (S_1, \ldots, S_n)$ be the set of all honest, next hop participating
-    strategies.
-    Then $S$ is a set ex-post Nash equilibrium.
+    Let $G$ be a stable outcome of an attractionless BGP instance.
+    Suppose there is a single manipulator $m$,
+    and all other nodes honestly participate in BGP and in next-hop verification.
+    If $m$ lies in order to get a better path to $d$,
+    then next-hop verification will catch that lie and shame $m$.
   \end{theorem}
-  \todo{
-    I think this isn't true, because of the ``universal shaming'':
-    node might have an incentive to not participate in next-hop, but
-    be honest otherwise. Whelp, ``universal negative utility'' was a 
-    dumb idea anyway
-  }
   \begin{proof}
-    Suppose some manipulator $m$ can profit by deviating from $S$.
-    Because $m$ cannot profit by only deviating from next-hop,
-    this means $m$ must announce a path which is not used in the data plane.
-    ((see note: the definitions need to be worked on)).
-    Suppose $m$ announces a hop $(a,b)$ to $v$, where $(a,b)$ is not actually used.
+    Suppose $m$ announces a hop $(a,b)$ to $v$, where $(a,c)$ is actually in
+    a route from $m$ to $d$ for some $c\ne a$.
+    For contradiction, assume that every path from $c$ to $v$ includes $m$
+    (so $m$ can drop the next-hop queries and its lie won't be caught).
+    Now, the route from $m$ to $d$ which includes $(a,c)$ must be a simple
+    path, so it cannot include $m$.
+    If there was a path from $v$ to $d$ which did not contain $m$, then the
+    path from $c$ to $d$ would give a simple path from $v$ to $c$.
+    Thus, every route from $v$ to $d$ includes $m$.
 
-    If not, then every path from $victim$ to $realNextHop$ goes through $m$.
-    However, this means no simple path from $m$ to $d$ can contain $victim$,
-    or any of the nodes that $victim$ could directly effect without routing
-    through $m$. Thus, $m$ could not have actually gotten a better path
-    through the lie.
+    Because all non-$m$ nodes are honest, $m$ must get $v$ to change its route
+    to $d$ in order to get a different path by lying to $v$.
+    However, $v$'s route cannot effect $m$'s route to $d$, because
+    every route from $v$ to $d$ includes $m$.
+    This contradicts the assumption that $m$ got a better path by lying,
+    and shows that there exists a path from $c$ to $v$ not including $m$.
+    By the previous lemma, this means $m$ will be caught and shamed.
   \end{proof}
 
   The following theorem formalizes our claim ``nodes have no incentive
   to deviate from honest BGP when next-hop verification is used,
   even when nodes have volume attraction''.
   \begin{theorem}
-    Let $G$ be a BGP instance with next-hop verification and traffic
-    volume attraction.
-    Let $S = (S_1, \ldots, S_n)$ be the set of all honest, next hop participating
-    strategies. 
-    Then $S$ is a set ex-post Nash equilibrium.
+    Let $G$ be a stable outcome of a BGP instance with traffic volume attraction.
+    Suppose there is a single manipulator $m$,
+    and all other nodes honestly participate in BGP and in next-hop verification.
+    If $m$ lies in order to attract traffic from some node $u$,
+    then next-hop verification will catch that lie and shame $m$.
   \end{theorem}
   \begin{proof}
-    As shown before, $m$ cannot get a better path. We show further
-    that $m$ cannot attract more traffic (in volume).
-    Suppose $m$ did manage to attract more traffic from a victim $v$.
-    Then, if $P$ denotes the path $v$ originally took to $d$,
-    then $P$ does not contain $m$. Because $v$ didn't use $P$
-    in the honest situation, the node $n$ which $m$ lied to must
-    be connected to $P$ I guess. Thus, $realNextHopOfM$
-    must be connected to $d$ with a path not containing $m$,
-    and $d$ is in turn connected to the guy who heard the lie.
-    I guess.
+    % As shown before, $m$ cannot get a better path. We show further
+    % that $m$ cannot attract more traffic (in volume).
+    Suppose $m$ did manage to attract more traffic from a victim $u$.
+    Let $P$ denotes the path $u$ originally took to $d$,
+    and let $Q$ denote the path $u$ takes in the manipulated outcome $G$.
+    Note that $m\in Q$ but $m\notin P$.
+    Let $v$ denote a node that $m$ lied to, and suppose $v$ is told
+    that hop $(a,b)$ is used while $(a,c)$ is actually used for $c\ne b$.
+
+    Because the lie told to $v$ must effect the path chosen by $u$,
+    there exists a path $R$ from $u$ to $v$ not including $m$.
+    Furthermore, because $m$ uses the route $S$ from $c$ to $d$
+    (and profits from it) we know $m\notin S$.
+    Thus, by eliminating any possible loops from $RPS$,
+    we get a simple path from $v$ to $c$ which does not include $m$.
+    Thus, by the lemma, $m$ will be caught and shamed.
   \end{proof}
+
+  However, ((add the counterexample of bowtie for generic attraction)).
 
   % Intuitively, if a node lies to get a better path, the node it lies
   % to and the node it routs through must be connected.

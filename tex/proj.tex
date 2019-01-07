@@ -277,29 +277,36 @@ Still need to decide what we should put here.
   The above is repeated until the following condition is reached:
   no node would change its forwarding table if activated.
   This is called reaching convergence.
+  If this never occurs, phase two of the game never starts and all agents
+  will receive $-\infty$ utility.
 
   Up until now, everything in this model has been previously considered.
   We introduce phase two to capture the execution of next-hop verification,
   where nodes send around queries to try and detect lies,
   i.e. mismatches between the control and data plane.
-  A query $Q(m,r,d) \in Query$ contains the following data:
-  \begin{itemize}
-    \item A potential manipulator $m$
-    \item An announced next-hop $r$
-    \item A destination $d$
-  \end{itemize}
-  Phase two starts after reaching convergence (formally, something)
-  after which each node $i$ starts with the query $Q(m,r,d)$ for every
-  destination node $d$ and every single hop $[m,r]$ on the route
+  A query $Q_d(a,b) \in Query$ represents the claim that $a$ uses $b$ as
+  its next-hop for destination $d$.
+  % \begin{itemize}
+  %   \item A potential manipulator $m$
+  %   \item An announced next-hop $r$
+  %   \item A destination $d$
+  % \end{itemize}
+  Phase two starts
+  with each node $i$ starts with the query $Q_d(a,b)$ for every
+  destination node $d$ and every single hop $[a,b]$ on the route
   that $i$ has installed for destination $d$.
-  During phase two, the activator picks a node $i$ to act,
+  During each round of phase two, the activator picks a node $i$ to act,
   and $i$ updates $h$ and $q$ from $state_i=(t,h,q)$ by performing the following
   for each $query \in q$:
   \begin{itemize}
     \item If $que_i(state_i, fwds_i, query) = True$, do nothing
     \item If $que_i(state_i, fwds_i, query) = False$, then the
-      ``potential manipulator'' $m$ of $query$ is ``shamed''
-      and given utility $-\infty$
+      ``potential manipulator'' of $query$ is ``shamed''.
+      In this case, \emph{every} agent is given utility $-\infty$\footnote{
+        This suffices to model a strong negative consequence for the manipulator
+        being caught lying. In practice, the node which queried would simply start
+        using a different route.
+      }
     \item Otherwise, $que_i(state_i, fwds_i, query) \in (N(i)\times Query)^*$
       gives a list of pairs $(j, query_j)$.
       For each such element of the list, add $query_j$ to the queue $q_j$
@@ -310,8 +317,8 @@ Still need to decide what we should put here.
   At the conclusion of the game, utilities are calculated as follows:
   \begin{itemize}
     \item If convergence is not reached, all nodes receive utility $-\infty$
-    \item If a node was ``shamed'' during the next-hop phase,
-      it receives utility $-\infty$
+    \item If any node was ``shamed'' during the next-hop phase,
+      all nodes receive utility $-\infty$
     \item Otherwise, node $i$ gets utility $v_i(State)$
   \end{itemize}
 
@@ -340,10 +347,24 @@ Still need to decide what we should put here.
       path according to $v$ which is announced to $i$, and
       $exp$ only announces the current favorite
       path to the destination that node $i$ is currently using according to $imp$.
-      Note that $exp$ is allowed to arbitrarily 
+      Note that $exp$ is allowed to arbitrarily filter paths and not
+      export them as it pleases.
     \item $strat$ is a \emph{next hop participant} if $que$ implements
       next-hop verification fully and honestly, as described in
-      previous sections
+      previous sections. That is,
+      \begin{align*}
+        que(state, fwds, Q(a,i)) & =
+        \begin{cases}
+          True & a \in fwds \\
+          False & a \notin fwds \\
+        \end{cases}
+        \\
+        que(state, fwds, Q(a,b)) & =
+        \begin{cases}
+          False & b\ne i \wedge a \in fwds \\
+          N(i) \times \{Q(a,b)\} & b\ne i
+        \end{cases}
+      \end{align*}
   \end{itemize}
 
   % Finally, we can formally define \emph{no incentive to lie} condition,
@@ -381,14 +402,18 @@ Still need to decide what we should put here.
   \begin{lemma}
     Let $G$ be a BGP instance with the next-hop verification phase.
     Suppose all nodes except one manipulator $m$ are next-hop participants.
-    Suppose that $m$ announces a next-hop of $r$ to node $n$,
-    but actually uses $p\ne r$ in the data plane.
-    Furthermore, suppose there exists a path from $n$ to $p$ not containing $m$.
+    Suppose that $m$ announces to node $v$ a hop of $(a,b)$
+    which is not actually used in the data plane.
+    Furthermore, suppose there exists a path from $v$ to $b$ not containing $m$.
     Then $m$ with be caught by next-hop verification, and will
     receive utility $-\infty$.
   \end{lemma}
   \begin{proof}
-    The query goes along the path.
+    Let $P$ denote the path from $v$ to $b$ not containing $m$.
+    Because the activation sequence is fair, every node along the path with
+    be activated, in the proper order going from $v$ to $b$.
+    Node $v$ starts with the query $Q(a,b)$, and thus it will eventually travel
+    to $b$, which will ``raise the alarm'' and give all nodes $-\infty$ utility.
   \end{proof}
 
   Our first result formalizes ``when nodes are attractionless,
@@ -399,7 +424,19 @@ Still need to decide what we should put here.
     strategies.
     Then $S$ is a set ex-post Nash equilibrium.
   \end{theorem}
+  \todo{
+    I think this isn't true, because of the ``universal shaming'':
+    node might have an incentive to not participate in next-hop, but
+    be honest otherwise. Whelp, ``universal negative utility'' was a 
+    dumb idea anyway
+  }
   \begin{proof}
+    Suppose some manipulator $m$ can profit by deviating from $S$.
+    Because $m$ cannot profit by only deviating from next-hop,
+    this means $m$ must announce a path which is not used in the data plane.
+    ((see note: the definitions need to be worked on)).
+    Suppose $m$ announces a hop $(a,b)$ to $v$, where $(a,b)$ is not actually used.
+
     If not, then every path from $victim$ to $realNextHop$ goes through $m$.
     However, this means no simple path from $m$ to $d$ can contain $victim$,
     or any of the nodes that $victim$ could directly effect without routing

@@ -108,46 +108,57 @@ We do not assume that the network uses path verification, though we will show th
 
 
 \section{Next-Hop Verification Protocol}
-Once convergence has occurred, we propose the use of the following protocol by all of the AS's. Note that the malicious AS $m$ may lie to avoid being caught, but since convergence has already occurred we assume that none of the other AS's have an incentive to lie or even to hide information they know.
+Once convergence has occurred, we propose the use of the following protocol by all of the AS's. Note that the malicious AS $m$ may lie and not follow the protocol in order to avoid being caught, but since convergence has already occurred we assume that none of the other AS's have an incentive to lie or even to hide information they know.
 
   Each node maintains a queue of queries which it needs to answer.
-  A query is denoted $Q(a,b)$, representing a node announcing that
-  $a$ uses $b$ as its next-hop for the destination $d$.
+  A query is denoted $Q(a,b,d)$, representing a node announcing that
+  $a$ uses $b$ as its next-hop in its path to destination $d$.
 
   \begin{algorithmic}
+    \State Denote the acting AS by $n$
     \Function{Initialize}{}
-      \For {each link $(a,b)$ in your path to $d$}
-        \State Add the query $Q(a,b)$ to your query queue
+      \For {each hop $(a,b)$ in $n$'s path to $d$}
+        \State Add the query $Q(a,b,d)$ to your query queue
       \EndFor
     \EndFunction
-    \Function{Respond}{$Q(a,b)$}
-      \State Let the acting AS be denoted by $n$
-      \If {You have previously responded to the query $Q(a,b)$ OR if $n=a$}
+    \Function{Respond}{$Q(a,b,d)$}
+      \If { $n$ previously responded to $Q(a,b,d)$ }
         \State \Return
       \EndIf
+      \If { $n = a$ }
+      	\If { $n$ does not use $b$ as its next hop for $d$ }
+      	  \State ``raise the alarm''
+	\EndIf
+	\State \Return
+      \EndIf
       \If { $n = b$ }
-        \If { $a$ forwards to you for destination $d$ }
-          \State \Return
-        \Else
-          \State ``raise the alarm''
+        \If { $a$ does not use $n$ as its next hop for $d$ }
+          \State``raise the alarm''
         \EndIf
-      \Else
-        \If {$a$ forwards to you for destination $d$ }
+        \State send the query $Q(a,b,d)$ to all neighbors
+      \Else \ (i.e. $n \neq a,b$)
+        \If {$a$ uses $n$ as its next hop for $d$ }
           \State ``raise the alarm''
         \Else
-        \State send the query $Q(a,b)$ to all neighbors (other than $a$)
+        \State send the query $Q(a,b,d)$ to all neighbors
         \EndIf
       \EndIf
     \EndFunction
     % \SetKwFunction{Respond}{Respond}
     \Function{Main}{}
-      \For {each query $Q(a,b)$ in $queue$}
-        \State {\sc Respond}($Q(a,b)$)
+      \For {each query $Q(a,b,d)$ in $queue$}
+        \State {\sc Respond}($Q(a,b,d)$)
       \EndFor
       \State clear the $queue$
     \EndFunction
 
   \end{algorithmic}
+  
+  \subsection{Additional notes}
+  \begin{itemize}
+  \item In the case where $n$ is responding to a query $Q(a,n,d)$, it needs to check whether $a$ actually forwards traffic directly to $n$ for destination $d$, which must be done in the data plane. Accordingly, each AS should keep a flag for each other (neighboring AS) $\times$ (dest AS) pair, representing whether the first AS ever directly sends $n$ traffic destined for the second $AS$.
+  \item If an AS has too many neighbors and/or destinations and keeping all these flags becomes unmanageable, each AS can have a policy for determining which pairs it thinks are important to monitor for.
+  \end{itemize}
 
 \begin{comment}
 We can put all the details of the protocol implementation here

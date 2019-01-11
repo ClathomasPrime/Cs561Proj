@@ -263,12 +263,9 @@
 
 
   \subsection{Verification}
-    \todo{
-      Not honestly sure what to do with this subsection.
-      It's mostly just ``previous work''
-    }
-    As mentioned before, various methods of catching
-    lies have been suggested in the literature.
+    In this section, we give an overview of some previously considered 
+    verification protocols. These will be our comparison points for next-hop
+    verification.
 
     \begin{definition} 
       In a network using \textbf{path verification} it is
@@ -278,12 +275,14 @@
 
     Some extensions to BGP, such as S-BGP, can enforce path verification.
     However, it requires additional overhead as well as universal adoption
-    \cite{PartialDeploy}.
+    \cite{PartialDeploy}, because every route communicated in the control plane
+    must be cryptographically signed by every AS along that route.
 
-    \begin{definition} 
+    \begin{definition}
       In a network using \textbf{loop verification} no AS will
       use an export policy that involves not sending a path to a neighbor
-      specifically because that neighbor is already in the path. In addition, if
+      specifically because that neighbor is already in the path.
+      In addition, if
       an AS ever sees a path containing itself that it did not announce, it will
       ``raise an alarm'', with the idea that the offender (the first
       node which announced a false path) can be publicly shamed.
@@ -300,29 +299,65 @@
     }
 
   \subsection{Behavioral assumptions}
-    ((DEFINE NEXT-HOP POLICY, VOLUME ATTRACTION, AND GENERIC
-    ATTRACTION))
+    When agents get utility from attracting traffic, stronger verification
+    protocols are needed to disincentivize lying.
+    In \cite{Attraction}, the authors consider the following classes of
+    traffic attraction.
+
+    \begin{definition}
+      An AS $m$ has \textbf{generic attraction} if it gets utility depending on
+      the paths of agents which route through $m$.
+      More specifically, $m$ gets utility given by a function of the
+      collection of routes containing $m$ which are used by other nodes.
+    \end{definition}
+    In particular, in generic attraction an AS $m$ has incentives to effect
+    \emph{how} other agents route through $m$.
+    For example, a provider may want a customer to route directly through it
+    in order to charge that customer more.
+
+    Volume attraction, on the other hand, is more restrictive:
+    \begin{definition}
+      An AS $m$ has \textbf{generic attraction} if it gets utility depending on
+      which agents route through $m$.
+      More specifically, $m$ gets utility given by a function of the
+      collection of agents whose route contains $m$.
+    \end{definition}
+    Volume attraction reflects truly malicious situations such as spying,
+    where the manipulative agent wants to view packets for some nefarious
+    reason. ((POSSIBLY MENTION EG CHINA SPYING ATTRACTION FIASCO)).
+
+    ((DEFINE NEXT-HOP POLICY MAYBE))
 
 \section{Next-Hop Verification Protocol}
-  Once convergence has occurred, we propose the use of the following protocol by
-  all of the AS's. Note that the malicious AS $m$ may lie and not follow the
-  protocol in order to avoid being caught, but since convergence has already
-  occurred we assume that none of the other AS's have an incentive to lie or even
-  to hide information they know.
+  % Once convergence has occurred, we propose the use of the following protocol by
+  % all of the AS's. Note that the malicious AS $m$ may lie and not follow the
+  % protocol in order to avoid being caught, but since convergence has already
+  % occurred we assume that none of the other AS's have an incentive to lie or even
+  % to hide information they know.
+  We now define next-hop verification.
+  This protocol is run on an already-stabilized BGP network,
+  i.e. it starts after convergence of BGP has already occurred.
+  Nodes communicate along existing links in the network, storing and sending
+  next-hop queries. We assume that AS's can ``raise the alarm'', similar to
+  \cite{Attraction}, which refers to alerting other agents that something
+  is going wrong with the particular query. For our results section,
+  we will assume that when the alarm is raised, the offending agent will be
+  caught (for example, via the collaboration of the NANOG mailing list to detect
+  the problem, as suggested in \cite{Attraction}).
 
   Each node maintains a queue of queries which it needs to answer.
-  A query is denoted $Q(a,b,d)$, representing a node announcing that
+  A query is denoted $Q_d(a,b)$, representing a node announcing that
   $a$ uses $b$ as its next-hop in its path to destination $d$.
 
   \begin{algorithmic}
     \State Denote the acting AS by $n$
     \Function{Initialize}{}
       \For {each hop $(a,b)$ in $n$'s path to $d$}
-        \State Add the query $Q(a,b,d)$ to your query queue
+        \State Add the query $Q_d(a,b)$ to your query queue
       \EndFor
     \EndFunction
-    \Function{Respond}{$Q(a,b,d)$}
-      \If { $n$ previously responded to $Q(a,b,d)$ }
+    \Function{Respond}{$Q_d(a,b)$}
+      \If { $n$ previously responded to $Q_d(a,b)$ }
         \State \Return
       \EndIf
       \If { $n = a$ }
@@ -335,19 +370,19 @@
         \If { $a$ does not use $n$ as its next hop for $d$ }
           \State``raise the alarm''
         \EndIf
-        \State send the query $Q(a,b,d)$ to all neighbors
+        \State send the query $Q_d(a,b)$ to all neighbors
       \Else \ (i.e. $n \neq a,b$)
         \If {$a$ uses $n$ as its next hop for $d$ }
           \State ``raise the alarm''
         \Else
-        \State send the query $Q(a,b,d)$ to all neighbors
+        \State send the query $Q_d(a,b)$ to all neighbors
         \EndIf
       \EndIf
     \EndFunction
     % \SetKwFunction{Respond}{Respond}
     \Function{Main}{}
-      \For {each query $Q(a,b,d)$ in $queue$}
-        \State {\sc Respond}($Q(a,b,d)$)
+      \For {each query $Q_d(a,b)$ in $queue$}
+        \State {\sc Respond}($Q_d(a,b)$)
       \EndFor
       \State clear the $queue$
     \EndFunction
@@ -367,7 +402,7 @@
       determining which pairs it thinks are important to monitor for.
   \end{itemize}
 
-\section{Results/examples}
+\section{Results}
 
   The following lemma is the key to our positive results.
   It explains whey next-hop verification
@@ -429,15 +464,19 @@
     Let $G$ be a stable outcome of a BGP instance.
     Suppose there is a single manipulator $m$ who lies in the stable outcome,
     and all other nodes honestly participate in BGP and in next-hop verification.
-    Then $m$ will be caught by next-hop verification if and only if
-    $m$ would be caught if loop verification were used by all other nodes.
-    ((TODO: maybe phrase this better))
+    Then if $m$ would be caught if loop verification were used by all other
+    nodes, then $m$ will be caught by next-hop verification.
   \end{theorem}
   \begin{proof}
     TODO: this
   \end{proof}
   As an aside, we note that an analogue of the above theorem for path
-  verification does not hold ((DISCUSS BOWTIE MINUS AN EDGE)).
+  verification does not hold\footnote{
+    For an example, consider figure~\ref{fig:Bowtie}, altered by removing the
+    link between nodes $m$ and $l$. The exact same lying strategy is still
+    available to $m$ under next-hop verification, but this is not possible if
+    path verification is used.
+  }.
   Combined with the extensive discussion in \cite{Attraction},
   the previous result gives us a few different situations in which
   next-hop verification will catch all incentivized lies.
@@ -472,7 +511,21 @@
     Thus, by the lemma, $m$ will be caught and shamed.
   \end{proof}
 
-  However, ((add the counterexample of bowtie for generic attraction)).
+  However, we are not able to extend this result to generic attraction.
+  Indeed, consider the example given by (figure~\ref{fig:Bowtie}),
+  from \cite{Attraction}.
+  In this network, the manipulator $m$ wants nodes $n$ and $c$
+  to use $m$ as their next hop for destination $d$,
+  for example, because of economic considerations.
+  The AS's who know what $m$ is doing in the data plane
+  are separated from the AS's $m$ is lying to.
+  Those victim agents cannot communicate with $d$ and $l$ without
+  going through $m$, which will just throw their next-hop queries away.
+  \begin{figure}[h]
+    \centering
+    \caption{Bowtie}\label{fig:Bowtie}
+    \includegraphics[width=0.75\textwidth]{Bowtie}
+  \end{figure}
 
   \begin{conjecture}
     Let $G$ be a stable outcome of a BGP instance with generic traffic attraction.

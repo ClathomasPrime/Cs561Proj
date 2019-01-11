@@ -512,7 +512,7 @@
   \end{proof}
 
   However, we are not able to extend this result to generic attraction.
-  Indeed, consider the example given by (figure~\ref{fig:Bowtie}),
+  Indeed, consider the example given by (Figure~\ref{fig:Bowtie}),
   from \cite{Attraction}.
   In this network, the manipulator $m$ wants nodes $n$ and $c$
   to use $m$ as their next hop for destination $d$,
@@ -538,6 +538,20 @@
   ((NOTE: the right assumption in the above might be some sort of ``next-hop
   attraction'', which sounds similar to AT4 from Goldberg. However, discussing AT4 
   takes us way too far down the Gao-Rexford rabbit hole)).
+
+
+\section{Possible future directions}
+We showed in the previous section that next-hop verification has the potential to provide some major benefits for catching lies in BGP, and thus reducing or even eliminating ASs' incentives to do so. However, there is still some future work that should be done before it is used in practice.
+
+One important question is how effective the protocol can be in partial deployment or participation. In our theorems we assumed that there was only one malicious AS and that all others actively participated fully in helping to catch lies. However in practice, it maybe the case that some AS's have not deployed the necessary software and/or hardware for participation. It may also be the case that some AS's choose not to participate or to only share a limited subset of the information they have, even if they are not themselves malicious, lying agents.
+
+Intuitively, it seems like partial deployment and participation would still be at least somewhat valuable. While this would not give us the same degree of benefits as full participation, it would still allow for the sharing of some information and thus preventing some lies. That said, it would be worth doing a more formal analysis of what this would look like.
+
+Somewhat relatedly, our protocol uses an unencrypted ``flooding'' sort of approach to send queries through the network to their desired recipients. As we saw in Figure~\ref{fig:Bowtie} though, if there is a bottleneck where all paths between two particular nodes goes through a malicious AS, it may want to read the queries that pass through it and drop ones that could expose it. More generally, in a situation with only partial deployment or with multiple malicious AS's, this problem could become more severe, cutting off AS's that both want to fact-check each other.
+
+One possible way to resolve this would be to add encryption so that an intercepting AS cannot read the query. Or if there are concerns about the AS even knowing whether a query has been sent, the query could even be routed as though it was just normal traffic.
+
+We see a possible value in using this sort of approach, but we also see benefits in the unencrypted ``flooding'' approach. The biggest problem we see with this alternative approach is that it makes it more complicated for AS's to adopt and deploy systems that can do next-hop verification, since it would require cryptographic techniques that they AS's may not already be using. If next-hop verification is ever deployed in practice, we think it is important to consider this and other tradeoffs between keeping it as simple as possible, and keeping it as secure as possible.
 
 \section{Conclusion}
 \begin{comment}

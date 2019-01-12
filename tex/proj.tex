@@ -108,6 +108,8 @@
     However, they admit that many of these conditions are unreasonably strong,
     such as requiring that AS's always announce either all paths they are aware
     of or none at all to all of their neighbors.
+    
+    Another proposal for detecting BGP lies---or more generally BGP faults---is NetReview \cite{NetReview}. When using NetReview, AS's record and publish all their BGP messages in tamper-evident logs, and other AS's are able to audit these logs to check whether there are any faults. However, actually detecting the faults requires regularly auditing the entirety of every AS's logs which is nontrivial. In addition, NetReview is purely in the control plane, so additional work needs to be done if we are concerned that AS's may route in the data plane differently than what they announced in the control plane. Next-hop verification addresses both of these concerns by being relatively simpler, and by incorporating information from the data plane.
 
     There is also much discussion of convergence in BGP. \cite{RoutingGames}
     \todo{
@@ -126,7 +128,7 @@
 
   \subsection{Our contributions}
     Given the difficulty of preventing lies in BGP,
-    we would at least like to be able to detect those lies.
+    we would at least like to be able to \emph{detect} lies when they are told.
     The initial observation of this work is that
     there will always be at least one AS that knows what each
     other AS is truly doing, namely the one that directly receives traffic from
@@ -553,10 +555,9 @@ One possible way to resolve this would be to add encryption so that an intercept
 
 We see a possible value in using this sort of approach, but we also see benefits in the unencrypted ``flooding'' approach. The biggest problem we see with this alternative approach is that it makes it more complicated for AS's to adopt and deploy systems that can do next-hop verification, since it would require cryptographic techniques that they AS's may not already be using. If next-hop verification is ever deployed in practice, we think it is important to consider this and other tradeoffs between keeping it as simple as possible, and keeping it as secure as possible.
 
+
 \section{Conclusion}
-\begin{comment}
-Still need to decide what we should put here.
-\end{comment}
+In this paper we have proposed the design of Next-Hop Verification, a protocol for catching BGP lies by using information from the control plane along with minimal data from the data plane, and by having the AS's collaborate with each other to detect these lies. We also analyzed the theoretical capabilities of the protocol, and showed that in many circumstances it is capable of catching lies that loop verification and path verification cannot catch. We believe that Next-Hop Verification's approach of sharing informationand cross-checking with the data plane is a valuable one, and that the protocol is a valuable step in working toward more secure control-plane communication.
 
 \bibliography{proj}{}
 \bibliographystyle{alpha}

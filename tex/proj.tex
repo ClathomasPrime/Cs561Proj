@@ -111,22 +111,6 @@
     
     Another proposal for detecting BGP lies---or more generally BGP faults---is NetReview \cite{NetReview}. When using NetReview, AS's record and publish all their BGP messages in tamper-evident logs, and other AS's are able to audit these logs to check whether there are any faults. However, actually detecting the faults requires regularly auditing the entirety of every AS's logs which is nontrivial. In addition, NetReview is purely in the control plane, so additional work needs to be done if we are concerned that AS's may route in the data plane differently than what they announced in the control plane. Next-hop verification addresses both of these concerns by being relatively simpler, and by incorporating information from the data plane.
 
-    There is also much discussion of convergence in BGP. \cite{RoutingGames}
-    \todo{
-      Not sure what to do with this paragraph.
-    }
-    argues that if we assume that the network infrastructure is not changing
-    over time and that each AS makes BGP announcements based solely on a ranking
-    of paths that is also constant over time, then subject to a condition called
-    \emph{No Dispute Wheels} the network will converge to a stable set of
-    routes. In more general contexts though, convergence becomes very hard to
-    reason about. Because of this complexity and the fact that in practice convergence does occur,
-    in this paper we choose to focus on what happens after
-    convergence. We show that if the network were to converge to a state that
-    depends on lies, we would then be able to catch the lies and shame the liar.
-    As a result, it should not be beneficial to lie in a way that leads to that
-    state.
-
   \subsection{Our contributions}
     Given the difficulty of preventing lies in BGP,
     we would at least like to be able to \emph{detect} lies when they are told.
@@ -152,7 +136,7 @@
     effective way for agents to distribute queries and fact-checking
     using the existing structure of the network and no encryption.
 
-    We find that next-hop verification allows us to catch lies assuming
+    We find that assuming full compliance, next-hop verification allows us to catch lies assuming
     there are is no traffic attraction among preferences.
     In this regard, next-hop verification is similar in effectiveness to 
     path verification.
@@ -170,15 +154,7 @@
     \cite{Attraction}, experimenting with various settings and seeing
     where next-hop verification leads to good incentive properties.
 
-    \todo{I've not thought about collusion-proofness for next-hop.
-      Unless we do, I'd significantly shorten this paragraph}
-    Our general analysis of next-hop verification does however use the strong
-    assumption that there is only a single lying agent.
-    We also for simplicity
-    and power focus on the situation in which everyone else participates fully.
-    That said, the protocol would still provide some value even with only
-    partial participation, and we will discuss this in Section 5. 
-
+\begin{comment}
   \subsection{Organization}
     \todo{Might not need this in a ``workshop style paper''}
     In the rest of Section 1 we discuss existing work, and we briefly outline
@@ -188,6 +164,7 @@
     verification, and goes through examples of concrete scenarios to compare
     what would be possible with and without next-hop verification. Finally,
     Section 5 offers some suggestions for follow-up work and Section 6 concludes.
+\end{comment}
 
 
 \section{Model Details}
@@ -195,10 +172,7 @@
     We model the network of AS's as an undirected graph, with a node for each AS
     and an edge between any two AS's that can directly communicate with each other
     without going through a third AS. We assume that the graph is a single
-    connected component, so any AS can in theory interact with any other AS
-    (although in practice, say if an intermediate AS intentionally drops traffic,
-    \todo{what is this comment for?}
-    this may not always actually be possible).
+    connected component, so any AS can in theory interact with any other AS.
     As is standard in the literature, we assume there is a unique destination AS
     $d$, because routing to different destination (prefixes) is done
     independently in BGP.
@@ -209,20 +183,6 @@
     determines how it responds to path announcements from neighboring AS's.
     Specifically, the import policy determines whether the AS will update
     its route, given a new announcement.
-    ((PERHAPS DISCUSS THE NOTION OF PREFERENCES AND THUS MENTION HONESTY HERE))
-
-    In this paper we ignore any concerns of storage for keeping track of all
-    \todo{what is this sentence for?}
-    announcements from neighbors, so we assume that any newly observed path is
-    added to a table, unless the receiving AS is already in the path.
-    In this case
-    it will either ignore the path announcement, or if the AS never announced the
-    \todo{It's too early to talk about look verification}
-    subpath containing itself it will raise an alarm that another AS has exported
-    a false path.
-    We also assume that on hearing an announcement, the AS can only
-    \todo{what does this mean?}
-    take actions related to the full path, and not related to particular subpaths.
 
     Each AS also has an export policy which determines how it will communicate the
     paths it is aware of to other AS's.
@@ -241,18 +201,26 @@
     network flows. The AS's will choose a strategy, namely their import and export
     policies, based on these preferences.
 
-    We assume that the collection of strategies leads the network to converge to a
-    stable solution. See \cite{RoutingGames, Attraction, StablePaths, PolicyPathVector}
-    for examples of more formal details about proving different types of convergence
-    and what assumptions are necessary.
-    \todo{maybe move the convergence paragraph from ``background'' to here?}
-
     \begin{definition}
       Suppose a BGP network $G$ has reached a stable equilibrium.
       We say that an AS \textbf{m} is \textbf{lying} if the
       it exports a route other than that which it is using.
       We say that an AS is \textbf{honest} if it is not lying.
     \end{definition}
+    
+    We assume that the collection of strategies leads the network to converge to a
+    stable solution.
+    In general contexts, convergence becomes very hard to
+    reason about. Because of this complexity and the fact that in practice convergence does occur,
+    in this paper we choose to focus on what happens after
+    convergence. We show that if the network were to converge to a state that
+    depends on lies, we would then be able to catch the lies and shame the liar.
+    As a result, it should not be beneficial to lie in a way that leads to that
+    state.
+    If you are interested in the topic of convergence though, see
+    \cite{RoutingGames, Attraction, StablePaths, PolicyPathVector}
+    for examples of more formal details about proving different types of convergence
+    and what assumptions are necessary.
 
 
   \subsection{Verification}

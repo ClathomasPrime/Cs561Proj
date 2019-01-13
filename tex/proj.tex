@@ -183,23 +183,53 @@
     determines how it responds to path announcements from neighboring AS's.
     Specifically, the import policy determines whether the AS will update
     its route, given a new announcement.
+    Furthermore, each AS has an export policy that determines whether it will
+    announce its current path to a neighbor (or, if the agent is being
+    manipulative, it could announce a path different from the one it is actually
+    using). These import and export policies are the action space of each agent AS.
 
-    Each AS also has an export policy which determines how it will communicate the
-    paths it is aware of to other AS's.
-    Specifically, for a BGP compliant AS, the export policy determines
-    whether or not to announce the AS's currently chosen route to a given neighbor.
-    In realistic settings an AS may prefer not to announce its path to all neighbors
-    (the most famous example of this being \cite{GaoRexford},
-    in which for example customers will not route traffic
-    between two of their providers).
-    However, for a manipulative, non-BGP compliant AS,
-    a much richer set of export policies is available.
-    The AS can lie arbitrarily, announcing paths that it doesn't use
+    More precisely, there are two types of actions available to each agent:
+    installing certain routes in their forwarding table,
+    and announcing paths to their neighbors.
+    Formally, we could model the import policy of a node $i$ as a function
+    $imp_i : Path^{N(i)} \to Path$ from the (possibly empty) collection of
+    routes currently announced as available to $i$, to a (possibly empty) path
+    to use for forwarding traffic\footnote{
+      We actually allow a manipulative, non-BGP compliant agent to have a
+      strictly larger set of available actions: the agent may forward down
+      multiple routes. See the discussion in section 3.1. ((MAY NEED SOME WORK
+      ORGANIZING THIS IDEA))
+    }. We assume that AS's have a utility function $v : Path \to \R$
+    which models their preference among the different paths to the destination.
+    Typically, a non-manipulative import policy would simply select the favorite
+    path available to the AS at a given point in time.
+
+    The export function could be modeled as a function
+    $exp_i : Path\times N(i) \to Path$ from the current path $i$ uses and a
+    given neighbor of $i$ to a path to announce to the neighbor (or the empty
+    path if $i$ does not wish to export).
+    For a BGP compliant AS, the export policy simply amounts to choosing whether
+    to export the path the AS currently uses (that is, we have $exp_i(j, p) = p$ or
+    $exp_i(j, p) = []$).
+    In realistic settings an AS may prefer not to announce its path to all
+    neighbors, the most famous example of this being the Gao-Rexford framework
+    \cite{GaoRexford}, in which for example customers will not route traffic
+    between two of their providers.
+    The export policy may more generally be determined by the traffic attraction
+    and repulsion preferences of the AS.
+    For a manipulative, non-BGP compliant AS,
+    a much richer set of export policies is available:
+    the AS can lie arbitrarily, announcing paths that it doesn't use
     or that don't even exist.
 
-    Finally, each AS has some preferences over how the actual traffic in the
-    network flows. The AS's will choose a strategy, namely their import and export
-    policies, based on these preferences.
+    % Each AS also has an export policy which determines how it will communicate the
+    % paths it is aware of to other AS's.
+    % Specifically, for a BGP compliant AS, the export policy determines
+    % whether or not to announce the AS's currently chosen route to a given neighbor.
+
+    % Finally, each AS has some preferences over how the actual traffic in the
+    % network flows. The AS's will choose a strategy, namely their import and export
+    % policies, based on these preferences.
 
     \begin{definition}
       Suppose a BGP network $G$ has reached a stable equilibrium.
@@ -207,18 +237,19 @@
       it exports a route other than that which it is using.
       We say that an AS is \textbf{honest} if it is not lying.
     \end{definition}
-    
+
     We assume that the collection of strategies leads the network to converge to a
     stable solution.
     In general contexts, convergence becomes very hard to
-    reason about. Because of this complexity and the fact that in practice convergence does occur,
+    reason about. Because of this complexity and the fact that in practice
+    convergence typically does occur,
     in this paper we choose to focus on what happens after
     convergence. We show that if the network were to converge to a state that
     depends on lies, we would then be able to catch the lies and shame the liar.
     As a result, it should not be beneficial to lie in a way that leads to that
     state.
     If you are interested in the topic of convergence though, see
-    \cite{RoutingGames, Attraction, StablePaths, PolicyPathVector}
+    \cite{RoutingGames, GaoRexford, StablePaths, PolicyPathVector}
     for examples of more formal details about proving different types of convergence
     and what assumptions are necessary.
 
@@ -261,10 +292,10 @@
     \begin{definition}
       An AS $m$ cares about \textbf{volume attraction} if its utility can depend on
       the set of AS's that route through $m$.
-      
+
       An AS $m$ cares about \textbf{generic attraction} if its utility can depend on
       the set of AS's that route through $m$ AND on the routes these AS's take to get to $m$.
-      \end{definition}
+    \end{definition}
 
     Volume attraction can reflect truly malicious situations such as spying,
     where the manipulative agent wants to view packets for some nefarious
@@ -273,7 +304,11 @@
     China Telecom BGP hijacking could've potentially served this function
     \cite{ChinaHijack}. It could also simply reflect an economic incentive such as
     getting paid for routing more traffic.
-    
+    \todo{
+      Check on this - I've been thinking of generic/next-hop type attraction
+      being the economic case
+    }
+
     With preferences for generic attraction, an AS $m$ may have incentives to affect
     \emph{how} other agents route through $m$.
     For example, a provider may want a customer to route directly through it
@@ -304,10 +339,18 @@
   Each node maintains a queue of queries which it needs to answer.
   A query is denoted $Q_d(a,b)$, representing a node announcing that
   $a$ uses $b$ as its next-hop in its path to destination $d$.
-  During initialization, every node $n$ adds the query $Q_d(a,b)$ to its own
-  queue, for every hop $(a,b)$ on $n$'s path to the destination $d$.
+  After convergence but before asking their own queries, each next-hop agent
+  should send some amount of traffic to destination $d$.
+  %, in order to force any potential manipulator to use contradict itself in the
+  % data plane
+  \todo{
+    Maybe explain this sentence some here?
+  }
+  Next, every node $n$ initializes its own queue by adding the query $Q_d(a,b)$
+  for every hop $(a,b)$ on $n$'s path to the destination $d$.
   From that point on, every round in which $n$ acts, it runs the function
-  {\sc Respond} on every query $Q_d(a,b)$ waiting in its queue, then waits for more queries.
+  {\sc Respond} on every query $Q_d(a,b)$ waiting in its queue,
+  then waits for more queries.
 
   \begin{algorithmic}[1]
     \State Denote the acting AS by $n$
@@ -354,6 +397,9 @@
   \end{algorithmic}
 
   \subsection{Additional considerations}
+  \todo{
+    Perhaps mention our assumptions on traffic actually being sent here as well.
+  }
   \begin{itemize}
     \item In the case where $n$ is responding to a query $Q_d(a,n)$, it needs to
       check whether $a$ actually forwards traffic directly to $n$ for
@@ -361,12 +407,21 @@
       AS should keep a flag for each other (neighboring AS) $\times$ (dest AS)
       pair, representing whether the first AS ever directly sends $n$ traffic
       destined for the second $AS$.
-    \item In practice, maintaining the accuracy of this information in the
+      In practice, maintaining the accuracy of this information in the
       face of the dynamic nature of routing would be difficult.
-      However, we take this information as given.
-      In particular, we assume that traffic is sent often enough toward the
-      destination that the absence of traffic means that a given route is not
-      being used. \todo{rephrase}
+      However, we consider the necessary data structures and algorithms as
+      given.\todo{rephrase}
+    \item We require nodes to actually send traffic before asking next-hop
+      queries. This forces the potential manipulator to actually use at least
+      some data-plane paths, in the hopes that it will use a false path.
+      Intuitively, this will leave evidence of the lie, in the sense that
+      certain AS's will know what is actually happening.
+      More generally, we assume that enough traffic is sent such that
+      all data-plane paths are actually observed, and
+      that the absence of traffic means that a given route is not
+      being used. This is a strong assumption on the traffic in the network, but
+      in very stable networks (and for important destinations) this assumption
+      is not too unreasonable.
     % \item If an AS has too many neighbors and/or destinations and keeping all
     %   these flags becomes unmanageable, each AS can have a policy for
     %   determining which pairs it thinks are important to monitor for.
@@ -381,6 +436,9 @@
       in line~\ref{line:falseNegativeForward} of {\sc Respond}.
       ((WE HAVE A CONCRETE EXAMPLE OF THIS IF THERE IS SPACE,
       AT LEAST FOR VOLUME ATTRACTION))
+      Furthermore, it means we cannot rely on line~\ref{line:targetRaise}
+      in any of our theorems, because the manipulator may ``fake'' sending
+      traffic to $b$.
   \end{itemize}
 
   For a motivating example of next-hop verification, consider the

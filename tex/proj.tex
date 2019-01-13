@@ -375,9 +375,6 @@
   \end{algorithmic}
 
   \subsection{Additional considerations}
-  \todo{
-    Perhaps mention our assumptions on traffic actually being sent here as well.
-  }
   \begin{itemize}
     \item In the case where $n$ is responding to a query $Q_d(a,n)$, it needs to
       check whether $a$ actually forwards traffic directly to $n$ for
@@ -387,8 +384,10 @@
       destined for the second $AS$.
       In practice, maintaining the accuracy of this information in the
       face of the dynamic nature of routing would be difficult.
-      However, we consider the necessary data structures and algorithms as
-      given.\todo{rephrase}
+      For example, AS's need to reset the flags after certain lengths of time
+      without seeing any traffic.
+      However, we leave the details to future work.
+
     \item We require nodes to actually send traffic before asking next-hop
       queries. This forces the potential manipulator to actually use at least
       some data-plane paths, in the hopes that it will use a false path.
@@ -404,19 +403,22 @@
     %   these flags becomes unmanageable, each AS can have a policy for
     %   determining which pairs it thinks are important to monitor for.
     %   \todo{idk if the previous bullet should encompass this??}
+
     \item If a manipulator is lying about the next-hop it is personally using,
       it may intentionally send occasional traffic towards its announced
       next-hop, while sending the bulk of its traffic down the route that it
       genuinely prefers. We take this strategy into consideration, and our
-      theorems hold even allowing for this. However, it means that next-hop
-      verification cannot ``confirm the hop'' if $n=b$ and $a$ uses $b$ as
-      its next-hop, and must instead forward the query on to its neighbors
+      theorems hold even allowing for this.
+      However, it means that if $n=b$ and $a$ forwards traffic directly to $b$,
+      then $n$ cannot guarantee that $a$ doesn't forward traffic elsewhere as well.
+      Instead $n$ must forward the query on to its neighbors
       in line~\ref{line:falseNegativeForward} of {\sc Respond}.
-      ((WE HAVE A CONCRETE EXAMPLE OF THIS IF THERE IS SPACE,
-      AT LEAST FOR VOLUME ATTRACTION))
+      % ((WE HAVE A CONCRETE EXAMPLE OF THIS IF THERE IS SPACE,
+      % AT LEAST FOR VOLUME ATTRACTION))
       Furthermore, it means we cannot rely on line~\ref{line:targetRaise}
-      in any of our theorems, because the manipulator may ``fake'' sending
-      traffic to $b$.
+      in any of our theorems, because if $a$ is the manipulator
+      it may send a small amount of ``fake traffic'' to $b$
+      in order to ``cover its tracks''.
   \end{itemize}
 
   For a motivating example of next-hop verification, consider the
@@ -504,13 +506,16 @@
   \end{proof}
 
   The next result shows that next-hop verification is at least as
-  effective as loop verification in disincentivizing lying in many cases:
+  effective as loop verification in disincentivizing lying in some cases:
   \begin{theorem}
     Let $G$ be a stable outcome of a BGP instance with generic traffic attraction.
     Suppose there is a single manipulator $m$,
     and all other nodes honestly participate in BGP and in next-hop verification.
-    Suppose that, among all possible strategies of $m$ and executions of BGP,
-    loop verification would catch $m$'s lie at some point during the execution.
+    Suppose that loop verification, run on the stabilized network,
+    would catch $m$'s lie.
+    \todo{finish converting this to an ex-post type of statement}
+    % Suppose that, among all possible strategies of $m$ and executions of BGP,
+    % loop verification would catch $m$'s lie at some point during the execution.
     Then $m$ will be caught by next-hop verification on the stabilized network.
   \end{theorem}
   \begin{proof}
@@ -518,7 +523,7 @@
     path: there must be traffic attraction.
     Suppose $m$ attracts traffic from some node $v$ by falsely announcing a path
     $P$ from $m$ to $d$.
-    The manipulator $m$ must announce the path $P$, paths containing $P$
+    The manipulator $m$ must announce the path $P$, and paths containing $P$
     must spread outward through some part of the graph, and $v$ must end up
     routing through $P$.
     Consider the tree $T$ of agents who route through $P$ which is minimal among all

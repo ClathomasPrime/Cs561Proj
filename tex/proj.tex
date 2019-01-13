@@ -54,7 +54,6 @@
   techniques.
 \end{abstract}
 
-
 \section{Introduction}
 
   \subsection{Background and Previous Work}
@@ -298,10 +297,6 @@
     China Telecom BGP hijacking could've potentially served this function
     \cite{ChinaHijack}. It could also simply reflect an economic incentive such as
     getting paid for routing more traffic.
-    \todo{
-      Check on this - I've been thinking of generic/next-hop type attraction
-      being the economic case
-    }
 
     With preferences for generic attraction, an AS $m$ may have incentives to affect
     \emph{how} other agents route through $m$.
@@ -315,11 +310,6 @@
     \end{definition}
 
 \section{Next-Hop Verification Protocol}
-  % Once convergence has occurred, we propose the use of the following protocol by
-  % all of the AS's. Note that the malicious AS $m$ may lie and not follow the
-  % protocol in order to avoid being caught, but since convergence has already
-  % occurred we assume that none of the other AS's have an incentive to lie or even
-  % to hide information they know.
   We now define next-hop verification.
   This protocol is run on a BGP network after convergence has already occurred.
   Nodes communicate along existing links in the network, storing and sending
@@ -333,18 +323,12 @@
   Each node maintains a queue of queries which it needs to answer.
   A query is denoted $Q_d(a,b)$, representing a node announcing that
   $a$ uses $b$ as its next-hop in its path to destination $d$.
-  After convergence but before asking their own queries, each next-hop agent
-  should send some amount of traffic to destination $d$.
-  %, in order to force any potential manipulator to use contradict itself in the
-  % data plane
-  \todo{
-    Maybe explain this sentence some here?
-  }
-  Next, every node $n$ initializes its own queue by adding the query $Q_d(a,b)$
+  Whenever $n$ acts, it runs the function {\sc Respond} on every query
+  $Q_d(a,b)$ waiting in its queue, then waits for more queries.
+  
+  After $n$ has sent some traffic to $d$, it can start querying about its own
+  route. It does this by adding the query $Q_d(a,b)$ to its own queue,
   for every hop $(a,b)$ on $n$'s path to the destination $d$.
-  From that point on, every round in which $n$ acts, it runs the function
-  {\sc Respond} on every query $Q_d(a,b)$ waiting in its queue,
-  then waits for more queries.
 
   \begin{algorithmic}[1]
     \State Denote the acting AS by $n$

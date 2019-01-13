@@ -491,13 +491,13 @@
     Assume $m$ lies by announces a hop $(a,b)$ to $v$, where $(a,c)$ is actually in
     a route from $m$ to $d$ for some $c\ne b$.
     (Note that $m$ could send traffic to both $b$ and $c$ if $m=a$.)
-    
+
     If there exists a path $P$ from $v$ to $c$ that does not contain $m$ then
     because all nodes along $P$ are participating in the next-hop protocol,
     the node $v$ will ask the query $Q_d(a,b)$, which will travel along path $P$
     until $c$ can ``raise the alarm'' in line~\ref{line:otherRaise} of {\sc
     Respond}. So it is sufficient to show that such a path always exists.\\
-    
+
     Suppose for contradiction that every path from $v$ to $c$ includes $m$.\footnote{This would be a problem because $m$ could drop next-hop queries so that its lie wouldn't be caught}
     We will show that
     this is not compatible with the hypothesis that $m$ got a better path to $d$ by sdlying.
@@ -520,13 +520,14 @@
   \end{proof}
 
   The next result shows that next-hop verification is at least as
-  powerful as loop verification:
+  effective as loop verification in disincentivizing lying in many cases:
   \begin{theorem}
-    Let $G$ be a stable outcome of a BGP instance.
+    Let $G$ be a stable outcome of a BGP instance with generic traffic attraction.
     Suppose there is a single manipulator $m$,
     and all other nodes honestly participate in BGP and in next-hop verification.
-    Then if $m$ would be caught by loop verification,
-    then $m$ will be caught by next-hop verification.
+    Suppose that, among all possible strategies of $m$ and executions of BGP,
+    loop verification would catch $m$'s lie at some point during the execution.
+    Then $m$ will be caught by next-hop verification on the stabilized network.
   \end{theorem}
   \begin{proof}
     As shown above, an AS cannot be incentivized to lie just to get a better
@@ -536,8 +537,14 @@
     The manipulator $m$ must announce the path $P$, paths containing $P$
     must spread outward through some part of the graph, and $v$ must end up
     routing through $P$.
-    Let the tree of agents who end up routing through $P$ be denoted by $T$
-    (in particular, $v\in T$). Note that $T\setminus \{m\}$ is connected.
+    Consider the tree $T$ of agents who route through $P$ which is minimal among all
+    strategies of $m$ and executions of BGP.
+    That is, $T$ contains the agents which \emph{must} at some point route
+    through $P$ in order for $m$ to attract traffic from $v$.
+    Note that $T\setminus \{m\}$ is connected, because if $T\setminus \{m\}$
+    contained multiple connected components, then $m$ could have not lied to one
+    of the components, yet still attracted traffic from $v$.
+    This contradicts the definition of $T$ as the minimal such tree.
 
     % Consider all the AS's that this announcement travels
     % through to get to $v$. These AS's form a path $Q$ from $m$ to $v$. Note
@@ -545,11 +552,12 @@
     % have the path containing $P$ installed in the final stable outcome.
     % ((NOTE: MAYBE Q SHOULD BE A TREE INSTEAD OF A PATH))
 
+    \todo{this is an absolute unit of a sentence}
     Now, the only way for loop verification to guarantee to be able to
     catch $m$ in this lie is if some
     node $q$ in the tree $T$ is adjacent to a node $u$, such that $P$ contains
-    the path $uR$, where $R$ is a route that $u$ did not announce. Indeed,
-    in this case a route containing $P$ can be announced to $u$ by $q$,
+    the path $uR$, where $R$ is a route that $u$ did not announce.
+    Indeed, in this case a route containing $P$ can be announced to $u$ by $q$,
     and $u$ can raise the alarm for loop verification.
 
     Let $(a,b)$ be the first hop along $R$ which is not actually used in the

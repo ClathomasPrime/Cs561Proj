@@ -77,15 +77,15 @@
     Thus, due to all of the various (often conflicting)
     preferences that AS's have over how traffic is routed, these
     AS's can often have incentives to lie in the control plane about what they
-    will actually do in the data plane.
+    will actually do in the data plane, in order to influence how other AS's behave.
 
     To counteract this, \emph{verification protocols} have been developed which
     run alongside or alter BGP in order to prevent lying.
     Unfortunately, directly verifying the routes a packet takes in the data plane
     requires cryptographic signatures on every packet, as in \cite{DataPlane}.
-    This huge overhead makes data-plane verification impractical.
-    Instead, previous work has searched for control pane protocols
-    which still manage to prevent or discourage lies.
+    This huge overhead makes full data-plane verification impractical.
+    Instead, previous work has searched for control plane protocols
+    which still manage to prevent or discourage certain types of lies.
 
     Much work has been done on analyzing BGP verification protocols
     through game-theoretic models.
@@ -120,7 +120,8 @@
     of paths that is also constant over time, then subject to a condition called
     \emph{No Dispute Wheels} the network will converge to a stable set of
     routes. In more general contexts though, convergence becomes very hard to
-    reason about. Thus, in this paper we choose to focus on what happens after
+    reason about. Because of this complexity and the fact that in practice convergence does occur,
+    in this paper we choose to focus on what happens after
     convergence. We show that if the network were to converge to a state that
     depends on lies, we would then be able to catch the lies and shame the liar.
     As a result, it should not be beneficial to lie in a way that leads to that
@@ -135,7 +136,8 @@
     it in the data plane.
     As a result, if AS's are willing to collaborate then there is
     information that can be used to detect the existence of lies, without
-    requiring full data-plane verification.
+    requiring full data-plane verification. Put another way, we can just monitor
+    each AS, rather than every packet.
     Based on this observation, we present a new protocol called
     \emph{next-hop verification}
     and show that it effectively prevents lies in certain scenarios.
@@ -162,7 +164,8 @@
     path verification will prevent a lie that next-hop verification cannot).
     Additionally, we find that next-hop verification is strictly more
     powerful than loop verification, that is, every lying situation detected
-    by loop verification will be detected by next-hop verification.
+    by loop verification will be detected by next-hop verification
+    (though loop verification is still more lightweight).
     In general, we attempt to embark on a similar program to that of
     \cite{Attraction}, experimenting with various settings and seeing
     where next-hop verification leads to good incentive properties.
@@ -176,11 +179,6 @@
     That said, the protocol would still provide some value even with only
     partial participation, and we will discuss this in Section 5. 
 
-    \todo{ work this in nicer}
-    Finally, it is worth noting that next-hop verification is ``bulkier'' than loop
-    verification, as it essentially has to distribute information across the
-    whole collection of AS's, as well as do some minimal data-plane monitoring.
-
   \subsection{Organization}
     \todo{Might not need this in a ``workshop style paper''}
     In the rest of Section 1 we discuss existing work, and we briefly outline
@@ -189,7 +187,7 @@
     states and proves some theorems about the implications of using next-hop
     verification, and goes through examples of concrete scenarios to compare
     what would be possible with and without next-hop verification. Finally,
-    Section 5 offers some conclusions and suggestions for follow-up work.
+    Section 5 offers some suggestions for follow-up work and Section 6 concludes.
 
 
 \section{Model Details}
@@ -236,7 +234,7 @@
     between two of their providers).
     However, for a manipulative, non-BGP compliant AS,
     a much richer set of export policies is available.
-    The AS can lie arbitrarily, announcing path that it doesn't use
+    The AS can lie arbitrarily, announcing paths that it doesn't use
     or that don't even exist.
 
     Finally, each AS has some preferences over how the actual traffic in the
@@ -247,15 +245,8 @@
     stable solution. See \cite{RoutingGames, Attraction, StablePaths, PolicyPathVector}
     for examples of more formal details about proving different types of convergence
     and what assumptions are necessary.
+    \todo{maybe move the convergence paragraph from ``background'' to here?}
 
-    \begin{definition}
-      We say that an AS \textbf{m} is \textbf{lying} if the
-      stablility of the post-convergence equilibrium depends on a neighbor
-      thinking that \textbf{m} is acting in a way that is inconsistent with the
-      true equilibrium.
-      We say that an AS is \textbf{honest} if it is not lying.
-    \end{definition}
-    \todo{This is how I would make this definition}
     \begin{definition}
       Suppose a BGP network $G$ has reached a stable equilibrium.
       We say that an AS \textbf{m} is \textbf{lying} if the
@@ -293,43 +284,32 @@
     Note that if instead export policies did not send paths to neighbors who are
     already in them, the alarming in loop verification could not always be done.
 
-    Since loop verification is very minimal and easy to adopt we will assume that
-    the network uses it.
-    \todo{
-      We don't want to do this. Next-hop encompassing loop is an interesting
-      theorem.
-    }
-
   \subsection{Behavioral assumptions}
     When agents get utility from attracting traffic, stronger verification
     protocols are needed to disincentivize lying.
     In \cite{Attraction}, the authors consider the following classes of
-    traffic attraction.
+    preferences which depend on more than just an AS's own path.
 
     \begin{definition}
-      An AS $m$ has \textbf{generic attraction} if it gets utility depending on
-      the paths of agents which route through $m$.
-      More specifically, $m$ gets utility given by a function of the
-      collection of routes containing $m$ which are used by other nodes.
-    \end{definition}
-    In particular, in generic attraction an AS $m$ has incentives to effect
-    \emph{how} other agents route through $m$.
-    For example, a provider may want a customer to route directly through it
-    in order to charge that customer more.
+      An AS $m$ cares about \textbf{volume attraction} if its utility can depend on
+      the set of AS's that route through $m$.
+      
+      An AS $m$ cares about \textbf{generic attraction} if its utility can depend on
+      the set of AS's that route through $m$ AND on the routes these AS's take to get to $m$.
+      \end{definition}
 
-    Volume attraction, on the other hand, is more restrictive:
-    \begin{definition}
-      An AS $m$ has \textbf{generic attraction} if it gets utility depending on
-      which agents route through $m$.
-      More specifically, $m$ gets utility given by a function of the
-      collection of agents whose route contains $m$.
-    \end{definition}
-    Volume attraction reflects truly malicious situations such as spying,
+    Volume attraction can reflect truly malicious situations such as spying,
     where the manipulative agent wants to view packets for some nefarious
     reason. Issues like this may occasionally have huge consequences for the
     global routing behavior of the internet, for example, the 2010
     China Telecom BGP hijacking could've potentially served this function
-    \cite{ChinaHijack}.
+    \cite{ChinaHijack}. It could also simply reflect an economic incentive such as
+    getting paid for routing more traffic.
+    
+    With preferences for generic attraction, an AS $m$ may have incentives to affect
+    \emph{how} other agents route through $m$.
+    For example, a provider may want a customer to route directly through it
+    in order to charge that customer more.
 
     We briefly consider one assumption on the path preferences of AS's as well:
     \begin{definition}
@@ -344,11 +324,10 @@
   % occurred we assume that none of the other AS's have an incentive to lie or even
   % to hide information they know.
   We now define next-hop verification.
-  This protocol is run on an already-stabilized BGP network,
-  i.e. it starts after convergence of BGP has already occurred.
+  This protocol is run on a BGP network after convergence has already occurred.
   Nodes communicate along existing links in the network, storing and sending
   next-hop queries. We assume that AS's can ``raise the alarm'', similar to
-  \cite{Attraction}, which refers to alerting other agents that something
+  \cite{Attraction}, which refers to alerting others that something
   is going wrong with the particular query. For our results section,
   we will assume that when the alarm is raised, the offending agent will be
   caught (for example, via the collaboration of the NANOG mailing list to detect
@@ -360,8 +339,7 @@
   During initialization, every node $n$ adds the query $Q_d(a,b)$ to its own
   queue, for every hop $(a,b)$ on $n$'s path to the destination $d$.
   From that point on, every round in which $n$ acts, it runs the function
-  {\sc Respond} on every query $Q_d(a,b)$ waiting in $n$'s queue, then clears
-  the queue and waits for more queries.
+  {\sc Respond} on every query $Q_d(a,b)$ waiting in its queue, then waits for more queries.
 
   \begin{algorithmic}[1]
     \State Denote the acting AS by $n$
@@ -407,8 +385,7 @@
 
   \end{algorithmic}
 
-  The following additional considerations need to be considered:
-  ((PHRASING?))
+  \subsection{Additional considerations}
   \begin{itemize}
     \item In the case where $n$ is responding to a query $Q_d(a,n)$, it needs to
       check whether $a$ actually forwards traffic directly to $n$ for
@@ -421,7 +398,7 @@
       However, we take this information as given.
       In particular, we assume that traffic is sent often enough toward the
       destination that the absence of traffic means that a given route is not
-      being used.
+      being used. \todo{rephrase}
     % \item If an AS has too many neighbors and/or destinations and keeping all
     %   these flags becomes unmanageable, each AS can have a policy for
     %   determining which pairs it thinks are important to monitor for.
@@ -496,8 +473,7 @@
     (Note that $m$ could send traffic to both $b$ and $c$ if $m=a$.)
     For contradiction, assume that every path from $c$ to $v$ includes $m$
     % (so $m$ can drop the next-hop queries and its lie won't be caught).
-    Now, the route from $m$ to $d$ which includes $(a,c)$ must be a simple
-    path, so it cannot include $m$.
+    The route from $m$ to $d$ which includes $(a,c)$ must not have loops, so it cannot include $m$ again.
     If there was a path from $v$ to $d$ which did not contain $m$, then the
     path from $c$ to $d$ would give a simple path from $v$ to $c$ not containing
     $m$. Thus, every route from $v$ to $d$ includes $m$.

@@ -295,7 +295,7 @@
 
       An AS $m$ cares about \textbf{generic attraction} if its utility can depend on
       the set of AS's that route through $m$ AND on the routes these AS's take to get to $m$.
-      \end{definition}
+    \end{definition}
 
     Volume attraction can reflect truly malicious situations such as spying,
     where the manipulative agent wants to view packets for some nefarious
@@ -304,6 +304,10 @@
     China Telecom BGP hijacking could've potentially served this function
     \cite{ChinaHijack}. It could also simply reflect an economic incentive such as
     getting paid for routing more traffic.
+    \todo{
+      Check on this - I've been thinking of generic/next-hop type attraction
+      being the economic case
+    }
 
     With preferences for generic attraction, an AS $m$ may have incentives to affect
     \emph{how} other agents route through $m$.
@@ -335,10 +339,18 @@
   Each node maintains a queue of queries which it needs to answer.
   A query is denoted $Q_d(a,b)$, representing a node announcing that
   $a$ uses $b$ as its next-hop in its path to destination $d$.
-  During initialization, every node $n$ adds the query $Q_d(a,b)$ to its own
-  queue, for every hop $(a,b)$ on $n$'s path to the destination $d$.
+  After convergence but before asking their own queries, each next-hop agent
+  should send some amount of traffic to destination $d$.
+  %, in order to force any potential manipulator to use contradict itself in the
+  % data plane
+  \todo{
+    Maybe explain this sentence some here?
+  }
+  Next, every node $n$ initializes its own queue by adding the query $Q_d(a,b)$
+  for every hop $(a,b)$ on $n$'s path to the destination $d$.
   From that point on, every round in which $n$ acts, it runs the function
-  {\sc Respond} on every query $Q_d(a,b)$ waiting in its queue, then waits for more queries.
+  {\sc Respond} on every query $Q_d(a,b)$ waiting in its queue,
+  then waits for more queries.
 
   \begin{algorithmic}[1]
     \State Denote the acting AS by $n$
@@ -385,6 +397,9 @@
   \end{algorithmic}
 
   \subsection{Additional considerations}
+  \todo{
+    Perhaps mention our assumptions on traffic actually being sent here as well.
+  }
   \begin{itemize}
     \item In the case where $n$ is responding to a query $Q_d(a,n)$, it needs to
       check whether $a$ actually forwards traffic directly to $n$ for
@@ -392,12 +407,21 @@
       AS should keep a flag for each other (neighboring AS) $\times$ (dest AS)
       pair, representing whether the first AS ever directly sends $n$ traffic
       destined for the second $AS$.
-    \item In practice, maintaining the accuracy of this information in the
+      In practice, maintaining the accuracy of this information in the
       face of the dynamic nature of routing would be difficult.
-      However, we take this information as given.
-      In particular, we assume that traffic is sent often enough toward the
-      destination that the absence of traffic means that a given route is not
-      being used. \todo{rephrase}
+      However, we consider the necessary data structures and algorithms as
+      given.\todo{rephrase}
+    \item We require nodes to actually send traffic before asking next-hop
+      queries. This forces the potential manipulator to actually use at least
+      some data-plane paths, in the hopes that it will use a false path.
+      Intuitively, this will leave evidence of the lie, in the sense that
+      certain AS's will know what is actually happening.
+      More generally, we assume that enough traffic is sent such that
+      all data-plane paths are actually observed, and
+      that the absence of traffic means that a given route is not
+      being used. This is a strong assumption on the traffic in the network, but
+      in very stable networks (and for important destinations) this assumption
+      is not too unreasonable.
     % \item If an AS has too many neighbors and/or destinations and keeping all
     %   these flags becomes unmanageable, each AS can have a policy for
     %   determining which pairs it thinks are important to monitor for.
@@ -412,6 +436,9 @@
       in line~\ref{line:falseNegativeForward} of {\sc Respond}.
       ((WE HAVE A CONCRETE EXAMPLE OF THIS IF THERE IS SPACE,
       AT LEAST FOR VOLUME ATTRACTION))
+      Furthermore, it means we cannot rely on line~\ref{line:targetRaise}
+      in any of our theorems, because the manipulator may ``fake'' sending
+      traffic to $b$.
   \end{itemize}
 
   For a motivating example of next-hop verification, consider the

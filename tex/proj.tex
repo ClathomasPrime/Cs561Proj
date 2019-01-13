@@ -374,7 +374,15 @@
 
   \end{algorithmic}
 
-  \subsection{Additional considerations}
+  We have sketched an implementation of next-hop verification in Haskell.
+  Visit
+  https://github.com/ClathomasPrime/Cs561Proj/tree/master/bgp-fact-check/
+  to check out the code.
+  Of particular interest is the file src/FackCheck.hs, which implements the
+  above {\sc Respond} in the functions `processMessage' and
+  `factCheckAnswerQuery'. ((NOTE: FORMAT THIS STUFF))
+
+  We note the following important considerations:
   \begin{itemize}
     \item In the case where $n$ is responding to a query $Q_d(a,n)$, it needs to
       check whether $a$ actually forwards traffic directly to $n$ for

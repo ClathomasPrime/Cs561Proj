@@ -436,15 +436,25 @@
     then next-hop verification will catch that lie and shame $m$.
   \end{theorem}
   \begin{proof}
-    Suppose $m$ announces a hop $(a,b)$ to $v$, where $(a,c)$ is actually in
-    a route from $m$ to $d$ for some $c\ne a$.
+    Assume $m$ lies by announces a hop $(a,b)$ to $v$, where $(a,c)$ is actually in
+    a route from $m$ to $d$ for some $c\ne b$.
     (Note that $m$ could send traffic to both $b$ and $c$ if $m=a$.)
-    For contradiction, assume that every path from $c$ to $v$ includes $m$
+    
+    If there exists a path $P$ from $v$ to $c$ that does not contain $m$ then
+    because all nodes along $P$ are participating in the next-hop protocol,
+    the node $v$ will ask the query $Q_d(a,b)$, which will travel along path $P$
+    until $c$ can ``raise the alarm'' in line~\ref{line:otherRaise} of {\sc
+    Respond}. So it is sufficient to show that such a path always exists.\\
+    
+    Suppose for contradiction that every path from $v$ to $c$ includes $m$.\footnote{This would be a problem because $m$ could drop next-hop queries so that its lie wouldn't be caught}
+    We will show that
+    this is not compatible with the hypothesis that $m$ got a better path to $d$ by lying.
     % (so $m$ can drop the next-hop queries and its lie won't be caught).
-    The route from $m$ to $d$ which includes $(a,c)$ must not have loops, so it cannot include $m$ again.
-    If there was a path from $v$ to $d$ which did not contain $m$, then the
-    path from $c$ to $d$ would give a simple path from $v$ to $c$ not containing
-    $m$. Thus, every route from $v$ to $d$ includes $m$.
+    The route from $m$ to $d$ which includes $(a,c)$ must not have loops, so there exists
+    a path $P_1$ from $c$ to $d$ not containing $m$.
+    If there were a path $P_2$ from $v$ to $d$ which did not contain $m$, then the
+    path $P_2P_1$ is from $v$ to $c$ and would not contain $m$.
+    Thus, every route from $v$ to $d$ includes $m$.
 
     Because all non-$m$ nodes are honest, $m$ must get $v$ to change its route
     to $d$ in order to get a different path by lying to $v$.
@@ -454,13 +464,7 @@
     every route from $v$ to $d$ includes $m$,
     so no route of $v$ nor any consequence of $v$'s route can change the set of
     paths available to $m$.
-    This contradicts the assumption that $m$ got a better path by lying,
-    and shows that there exists a path $P$ from $c$ to $v$ not including $m$.
-
-    Now, because all nodes along $P$ are participating in the next-hop protocol,
-    the node $v$ will ask the query $Q_d(a,b)$, which will travel along path $P$
-    until $c$ can ``raise the alarm'' in line~\ref{line:otherRaise} of {\sc
-    Respond}.
+    This contradicts the assumption that $m$ got a better path by lying.
   \end{proof}
 
   The next result shows that next-hop verification is at least as

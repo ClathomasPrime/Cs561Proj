@@ -427,13 +427,12 @@ bookmarksopen = {true}
   Each node maintains a queue of queries which it needs to answer.
   A query is denoted $Q_d(a,b)$, representing a node announcing that
   $a$ uses $b$ as its next-hop in its path to destination $d$.
-  Whenever $n$ acts, it runs the function {\sc Respond} on every query
+  
+  Whenever $n$ acts, it runs the function {\sc Respond}---detailed in Figure~\ref{fig:Pseudocode}---on every query
   $Q_d(a,b)$ waiting in its queue, then waits for more queries.
   
-  After $n$ has sent some traffic to $d$, it can start querying about its own
-  route. It does this by adding the query $Q_d(a,b)$ to its own queue,
-  for every hop $(a,b)$ on $n$'s path to the destination $d$.
-
+  \begin{figure}[h]
+    \centering
   \begin{algorithmic}[1]
     \State Denote the acting AS by $n$
     % \Function{Initialize}{}
@@ -477,6 +476,12 @@ bookmarksopen = {true}
     % \EndFunction
 
   \end{algorithmic}
+  \caption{Next-hop verification pseudocode}\label{fig:Pseudocode}
+ \end{figure}
+  
+  After $n$ has sent some traffic to $d$, it can start querying about its own
+  route. It does this by adding the query $Q_d(a,b)$ to its own queue,
+  for every hop $(a,b)$ on $n$'s path to the destination $d$.
 
   We have sketched an implementation of next-hop verification in Haskell.
   Visit

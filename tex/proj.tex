@@ -357,8 +357,11 @@
   Each node maintains a queue of queries which it needs to answer.
   A query is denoted $Q_d(a,b)$, representing a node announcing that
   $a$ uses $b$ as its next-hop in its path to destination $d$.
-
-  ((TODO: DESCRIBE THE STUFF I COMMENTED OUT IN WORDS))
+  During initialization, every node $n$ adds the query $Q_d(a,b)$ to its own
+  queue, for every hop $(a,b)$ on $n$'s path to the destination $d$.
+  From that point on, every round in which $n$ acts, it runs the function
+  {\sc Respond} on every query $Q_d(a,b)$ waiting in $n$'s queue, then clears
+  the queue and waits for more queries.
 
   \begin{algorithmic}[1]
     \State Denote the acting AS by $n$
@@ -390,6 +393,7 @@
           \State ``raise the alarm'' \label{line:otherRaise}
         \Else
           \State send the query $Q_d(a,b)$ to all neighbors
+            \label{line:cluelessForward}
         \EndIf
       \EndIf
     \EndFunction
@@ -418,10 +422,10 @@
       In particular, we assume that traffic is sent often enough toward the
       destination that the absence of traffic means that a given route is not
       being used.
-    \item If an AS has too many neighbors and/or destinations and keeping all
-      these flags becomes unmanageable, each AS can have a policy for
-      determining which pairs it thinks are important to monitor for.
-      \todo{idk if the previous bullet should encompass this??}
+    % \item If an AS has too many neighbors and/or destinations and keeping all
+    %   these flags becomes unmanageable, each AS can have a policy for
+    %   determining which pairs it thinks are important to monitor for.
+    %   \todo{idk if the previous bullet should encompass this??}
     \item If a manipulator is lying about the next-hop it is personally using,
       it may intentionally send occasional traffic towards its announced
       next-hop, while sending the bulk of its traffic down the route that it
@@ -430,7 +434,8 @@
       verification cannot ``confirm the hop'' if $n=b$ and $a$ uses $b$ as
       its next-hop, and must instead forward the query on to its neighbors
       in line~\ref{line:falseNegativeForward} of {\sc Respond}.
-      ((WE HAVE A CONCRETE EXAMPLE OF THIS IF THERE IS SPACE))
+      ((WE HAVE A CONCRETE EXAMPLE OF THIS IF THERE IS SPACE,
+      AT LEAST FOR VOLUME ATTRACTION))
   \end{itemize}
 
   For a motivating example of next-hop verification, consider the
@@ -451,33 +456,33 @@
 
 \section{Results}
 
-  The following lemma is the key to our positive results.
-  It explains whey next-hop verification
-  \begin{lemma}
-    Let $G$ be a BGP instance with the next-hop verification phase.
-    Suppose all nodes except one manipulator $m$ are next-hop participants.
-    Assume that $m$ announces to node $v$ a hop $(a,b)$, where in the data plane the
-    hop $(a,c)$ is used for some $b\ne c$.
-    (Note that both $b$ and $c$ may be used if $a=m$ and $m$ is ``faking traffic'').
-    Furthermore, suppose there exists a path from $v$ to $c$ not containing $m$.
-    Then $m$ with be caught by next-hop verification, and will
-    receive utility $-\infty$.
-  \end{lemma}
-  \begin{proof}
-    Let $P$ denote the path from $v$ to $c$ not containing $m$.
-    Because the activation sequence is fair, every node along the path with
-    be activated, in the proper order going from $v$ to $c$.
-    % \todo{
-    %   Note: should probably get rid of the protocol's ability to
-    %   ``drop queries'' in view of a false-negative
-    % }
-    Node $v$ starts with the query $Q(a,b)$, and thus it will eventually travel
-    to $b$, which will ``raise the alarm'' and give $m$ utility $-\infty$.
-  \end{proof}
+  % The following lemma is the key to our positive results.
+  % It explains whey next-hop verification
+  % \begin{lemma}
+  %   Let $G$ be a BGP instance with the next-hop verification phase.
+  %   Suppose all nodes except one manipulator $m$ are next-hop participants.
+  %   Assume that $m$ announces to node $v$ a hop $(a,b)$, where in the data plane the
+  %   hop $(a,c)$ is used for some $b\ne c$.
+  %   (Note that both $b$ and $c$ may be used if $a=m$ and $m$ is ``faking traffic'').
+  %   Furthermore, suppose there exists a path from $v$ to $c$ not containing $m$.
+  %   Then $m$ with be caught by next-hop verification, and will
+  %   receive utility $-\infty$.
+  % \end{lemma}
+  % \begin{proof}
+  %   Let $P$ denote the path from $v$ to $c$ not containing $m$.
+  %   Because the activation sequence is fair, every node along the path with
+  %   be activated, in the proper order going from $v$ to $c$.
+  %   % \todo{
+  %   %   Note: should probably get rid of the protocol's ability to
+  %   %   ``drop queries'' in view of a false-negative
+  %   % }
+  %   Node $v$ starts with the query $Q(a,b)$, and thus it will eventually travel
+  %   to $b$, which will ``raise the alarm'' and give $m$ utility $-\infty$.
+  % \end{proof}
 
   Our first result formalizes the statement ``in a network without
-  traffic attraction,
-  next-hop verification will catch all incentivized lies''.
+  traffic attraction, next-hop verification will catch all incentivized lies''.
+  Figure~\ref{fig:Nonexistent} demonstrates this theorem, as discussed above.
   \begin{theorem}
     Let $G$ be a stable outcome of a BGP instance without traffic attraction.
     Suppose there is a single manipulator $m$,
@@ -488,21 +493,30 @@
   \begin{proof}
     Suppose $m$ announces a hop $(a,b)$ to $v$, where $(a,c)$ is actually in
     a route from $m$ to $d$ for some $c\ne a$.
+    (Note that $m$ could send traffic to both $b$ and $c$ if $m=a$.)
     For contradiction, assume that every path from $c$ to $v$ includes $m$
-    (so $m$ can drop the next-hop queries and its lie won't be caught).
+    % (so $m$ can drop the next-hop queries and its lie won't be caught).
     Now, the route from $m$ to $d$ which includes $(a,c)$ must be a simple
     path, so it cannot include $m$.
     If there was a path from $v$ to $d$ which did not contain $m$, then the
-    path from $c$ to $d$ would give a simple path from $v$ to $c$.
-    Thus, every route from $v$ to $d$ includes $m$.
+    path from $c$ to $d$ would give a simple path from $v$ to $c$ not containing
+    $m$. Thus, every route from $v$ to $d$ includes $m$.
 
     Because all non-$m$ nodes are honest, $m$ must get $v$ to change its route
     to $d$ in order to get a different path by lying to $v$.
+    (More technically, there must exists a choice of
+    $v$ which picks a different path).
     However, $v$'s route cannot effect $m$'s route to $d$, because
-    every route from $v$ to $d$ includes $m$.
+    every route from $v$ to $d$ includes $m$,
+    so no route of $v$ nor any consequence of $v$'s route can change the set of
+    paths available to $m$.
     This contradicts the assumption that $m$ got a better path by lying,
-    and shows that there exists a path from $c$ to $v$ not including $m$.
-    By the previous lemma, this means $m$ will be caught and shamed.
+    and shows that there exists a path $P$ from $c$ to $v$ not including $m$.
+
+    Now, because all nodes along $P$ are participating in the next-hop protocol,
+    the node $v$ will ask the query $Q_d(a,b)$, which will travel along path $P$
+    until $c$ can ``raise the alarm'' in line~\ref{line:otherRaise} of {\sc
+    Respond}.
   \end{proof}
 
   The next result shows that next-hop verification is at least as
@@ -511,30 +525,41 @@
     Let $G$ be a stable outcome of a BGP instance.
     Suppose there is a single manipulator $m$ who lies in the stable outcome,
     and all other nodes honestly participate in BGP and in next-hop verification.
-    Then if $m$ would be necessarily be caught if loop verification
-    were used by all other nodes,
+    Then if $m$ would be necessarily be caught by loop verification,
+    % were used by all other nodes,
     then $m$ will be caught by next-hop verification.
   \end{theorem}
   \begin{proof}
+    As shown above, an AS cannot be incentivized to lie just to get a better
+    path: there must be traffic attraction.
     Suppose $m$ attracts traffic from some node $v$ by falsely announcing a path
-    $P$ from $m$ to $d$. Consider all the AS's that this announcement travels
-    through to get to $v$. These AS's form a path $Q$ from $m$ to $v$. Note
-    that, because all non-$m$ nodes are honest, all the nodes in $Q$ must still
-    have the path containing $P$ installed in the final stable outcome.
-    ((NOTE: MAYBE Q SHOULD BE A TREE INSTEAD OF A PATH))
+    $P$ from $m$ to $d$.
+    The manipulator $m$ must announce the path $P$, paths containing $P$
+    must spread outward through some part of the graph, and $v$ must end up
+    routing through $P$.
+    Let the tree of agents who end up routing through $P$ be denoted by $T$
+    (in particular, $v\in T$). Note that $T\setminus \{m\}$ is connected.
+
+    % Consider all the AS's that this announcement travels
+    % through to get to $v$. These AS's form a path $Q$ from $m$ to $v$. Note
+    % that, because all non-$m$ nodes are honest, all the nodes in $Q$ must still
+    % have the path containing $P$ installed in the final stable outcome.
+    % ((NOTE: MAYBE Q SHOULD BE A TREE INSTEAD OF A PATH))
 
     Now, the only way for loop verification to guarantee to be able to
     catch $m$ in this lie is if some
-    node $q$ along the path $Q$ is adjacent to a node $u$, such that $P$ contains
+    node $q$ in the tree $T$ is adjacent to a node $u$, such that $P$ contains
     the path $uR$, where $R$ is a route that $u$ did not announce. Indeed,
-    in this case a route containing $P$ can be announced to $u$, and $u$ can
-    raise the alarm for loop verification.
+    in this case a route containing $P$ can be announced to $u$ by $q$,
+    and $u$ can raise the alarm for loop verification.
 
     Let $(a,b)$ be the first hop along $R$ which is not actually used in the
-    data plane.
-    If next-hop verification is used by all non-manipulator nodes, then $q$ will
-    ask $u$ the query $Q_d(a,b)$. This query will travel along the path $R$,
-    until it gets to $a$, and the alarm will be raised, as in the main lemma.
+    data plane. Note that $m\notin R$.
+    If next-hop verification is used by all non-manipulator nodes, then $v$ will
+    ask the query $Q_d(a,b)$. This query will travel within the tree $T$,
+    through $q$ to $u$, and along $R$ until it gets to $a$.
+    There, agent $a$ will ``raise the alarm'' in line~\ref{line:sourceRaise} of {\sc
+    Respond}, and $m$ will be caught.
   \end{proof}
   As an aside, we note that an analogue of the above theorem for path
   verification does not hold\footnote{
@@ -551,6 +576,9 @@
 
   The following theorem says that next-hop verification will still catch lies
   in networks with volume attraction.
+  Indeed, unlike \cite{Attraction} we do not need to make \emph{any} assumptions
+  on preferences or behavior (other than assuming \emph{volume} attraction)
+  to get this positive result.
   \begin{theorem}
     Let $G$ be a stable outcome of a BGP instance with traffic volume attraction.
     Suppose there is a single manipulator $m$,
@@ -573,8 +601,12 @@
     Furthermore, because $m$ uses the route $S$ from $c$ to $d$
     (and profits from it) we know $m\notin S$.
     Thus, by eliminating any possible loops from $RPS$,
+    the concatenation of the three paths,
     we get a simple path from $v$ to $c$ which does not include $m$.
-    Thus, by the lemma, $m$ will be caught and shamed.
+    Because all non-$m$ nodes are actively and honestly running next-hop,
+    the query $Q_d(a,b)$ will travel from $v$ to $c$ and $c$ will
+    ``raise the alarm'' in line~\ref{line:otherRaise} of {\sc
+    Respond}.
   \end{proof}
 
   However, we are not able to extend this result to generic attraction.
@@ -617,59 +649,108 @@
 
 \section{Possible future directions}
 
-  \todo{Several of these next paragraphs are good but seem too long to me.
-  I can trim them down if that's cool!}
+  \todo{I shortened several of these paragraphs.
+  Let me know if I was too heavy-handed!}
 
   We showed in the previous section that next-hop verification has the potential
   to provide some major benefits for catching lies in BGP, and thus reducing or
-  even eliminating ASs' incentives to do so. However, there is still some future
+  even eliminating AS's incentives to do so. However, there is still some future
   work that should be done before it is used in practice.
 
   One important question is how effective the protocol can be in partial
   deployment or participation. In our theorems we assumed that there was only
   one malicious AS and that all others actively participated fully in helping to
   catch lies. However in practice, it maybe the case that some AS's have not
-  deployed the necessary software and/or hardware for participation. It may also
-  be the case that some AS's choose not to participate or to only share a
-  limited subset of the information they have, even if they are not themselves
-  malicious, lying agents.
+  deployed the necessary software and/or hardware for participation.
+  Partial deployment and participation would still be somewhat valuable:
+  certainly lies can still be detected if we get lucky and all the right agents
+  participate. However, a formal analysis with strong theorems is probably
+  difficult in the face of such partial deployment.
 
-  Intuitively, it seems like partial deployment and participation would still be
-  at least somewhat valuable. While this would not give us the same degree of
-  benefits as full participation, it would still allow for the sharing of some
-  information and thus preventing some lies. That said, it would be worth doing
-  a more formal analysis of what this would look like.
+  A related and interesting line of investigation would be into the
+  actual incentives of mutual participation in next-hop verification.
+  There are examples where a non-lying agent does actually get a better path
+  through the lies of a manipulator, AND that agent's participation is needed to
+  catch the manipulator with next-hop verification.
+  \todo{check this!!!!}
+  In practice, perhaps could ``fact-checking'' be written into
+  customer-provider contract agreements,
+  e.g. providers helping customers keep track of \emph{other} providers?
+  In the setting of Gao-Rexford networks \cite{GaoRexford}, it may be possible
+  to prove strong results, such as participation in next-hop with your customers
+  never being harmful.
 
-  Somewhat relatedly, our protocol uses an unencrypted ``flooding'' sort of
-  approach to send queries through the network to their desired recipients. As
-  we saw in Figure~\ref{fig:Bowtie} though, if there is a bottleneck where all
-  paths between two particular nodes goes through a malicious AS, it may want to
-  read the queries that pass through it and drop ones that could expose it. More
-  generally, in a situation with only partial deployment or with multiple
-  malicious AS's, this problem could become more severe, cutting off AS's that
-  both want to fact-check each other.
+  % It may also
+  % be the case that some AS's choose not to participate or to only share a
+  % limited subset of the information they have, even if they are not themselves
+  % malicious, lying agents.
 
-  One possible way to resolve this would be to add encryption so that an
-  intercepting AS cannot read the query. Or if there are concerns about the AS
-  even knowing whether a query has been sent, the query could even be routed as
-  though it was just normal traffic.
+  %  While this would not give us the same degree of
+  % benefits as full participation, it would still allow for the sharing of some
+  % information and thus preventing some lies. That said, it would be worth doing
+  % a more formal analysis of what this would look like.
 
-  ((MENTION THAT TRUE FLOODING IS OBVIOUSLY IMPRACTICAL AND AT VERY LEAST YOU
-  NEED A TIME TO LIVE THING. MORE GENERALLY WE'RE JUST TRYING TO DEMONSTRATE THE
-  EFFECTIVENESS OF THIS IDEA.))
+  Perhaps the biggest practical problem with our protocol
+  is the way it ``floods'' the AS graph with next-hop queries.
+  In practice, the very minimum that would need to be added is a
+  ``time to live'' field on the next-hop queries,
+  which would prevent them from exploding over the entire AS graph.
+  % {Somewhat relatedly}, our protocol uses an unencrypted ``flooding'' sort of
+  % approach to send queries through the network to their desired recipients. As
+  % we saw in Figure~\ref{fig:Bowtie} though, if there is a bottleneck where all
+  % paths between two particular nodes goes through a malicious AS, it may want to
+  % read the queries that pass through it and drop ones that could expose it. More
+  % generally, in a situation with only partial deployment or with multiple
+  % malicious AS's, this problem could become more severe, cutting off AS's that
+  % both want to fact-check each other.
 
-  We see a possible value in using this sort of approach, but we also see
-  benefits in the unencrypted ``flooding'' approach. The biggest problem we see
-  with this alternative approach is that it makes it more complicated for AS's
-  to adopt and deploy systems that can do next-hop verification, since it would
-  require cryptographic techniques that they AS's may not already be using. If
-  next-hop verification is ever deployed in practice, we think it is important
-  to consider this and other tradeoffs between keeping it as simple as possible,
-  and keeping it as secure as possible.
+  The clear alternative to this ``query flooding'' is to simply encrypt the
+  query and send it to the AS's who can answer it (just as you would normal traffic).
+  The burden of such encryption would not be very heavy, and the
+  resulting protocol would be a lot more practical for checking on hops which
+  are far away from you in the AS graph.
+  \todo{
+    the rest of this paragraph is what I meant in that mystery bullet point
+    in the google doc
+  }
+  However, the ideal fact-checking protocol is one that makes only local
+  communication, like that of path verification (with local cryptographic signatures)
+  or the even more lightweight loop verification (which is normal BGP with a simple
+  extra check for ``did I actually announce this?'').
+  Indeed, in examples like Figure~\ref{fig:Nonexistent}, the next-hop query
+  needs to travel only one hop before being answered.
+  In today's very dense AS graph, that may often be the case,
+  and with more refined knowledge of the nearby structure of the graph,
+  an AS may be able to intelligently route its next-hop queries to get efficient
+  answers. We view our protocol, and the theorems surrounding it, as a step
+  towards a more refined next-hop verification capable of meeting these
+  criterion.
+
+  % next-hop verification is ever deployed in practice, we think it is important
+  % to consider this and other tradeoffs between keeping it as simple as possible,
+  % and keeping it as secure as possible.
+
+  % One possible way to resolve this would be to add encryption so that an
+  % intercepting AS cannot read the query. Or if there are concerns about the AS
+  % even knowing whether a query has been sent, the query could even be routed as
+  % though it was just normal traffic.
+
+  % We see a possible value in using this sort of approach, but we also see
+  % benefits in the unencrypted ``flooding'' approach.
+  % The biggest problem we see
+  % with this alternative approach is that it makes it more complicated for AS's
+  % to adopt and deploy systems that can do next-hop verification, since it would
+  % require cryptographic techniques that they AS's may not already be using. If
+  % next-hop verification is ever deployed in practice, we think it is important
+  % to consider this and other tradeoffs between keeping it as simple as possible,
+  % and keeping it as secure as possible.
 
 
 \section{Conclusion}
 In this paper we have proposed the design of Next-Hop Verification, a protocol for catching BGP lies by using information from the control plane along with minimal data from the data plane, and by having the AS's collaborate with each other to detect these lies. We also analyzed the theoretical capabilities of the protocol, and showed that in many circumstances it is capable of catching lies that loop verification and path verification cannot catch. We believe that Next-Hop Verification's approach of sharing informationand cross-checking with the data plane is a valuable one, and that the protocol is a valuable step in working toward more secure control-plane communication.
+
+\todo{Put a code appendix I guess?? As per piazza. At minimum we need to link
+to the code}
 
 \bibliography{proj}{}
 \bibliographystyle{alpha}

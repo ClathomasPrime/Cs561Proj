@@ -181,12 +181,16 @@
     existence or removal of paths to each other.
     Each AS has an import policy that
     determines how it responds to path announcements from neighboring AS's.
-    Specifically, the import policy determines whether the AS will update
-    its route, given a new announcement.
+    Specifically, the import policy determines whether and how the AS will update
+    its route, when it hears new announcements.
     Furthermore, each AS has an export policy that determines whether it will
     announce its current path to a neighbor (or, if the agent is being
     manipulative, it could announce a path different from the one it is actually
     using). These import and export policies are the action space of each agent AS.
+    Finally, each AS has some preferences over how the actual traffic in the
+    network flows, regarding both what route it gets and how other AS's route through it.
+    Each AS will choose a strategy, namely their import and export
+    policies, based on these preferences.
 
     More precisely, there are two types of actions available to each agent:
     installing certain routes in their forwarding table,
@@ -197,14 +201,13 @@
     to use for forwarding traffic\footnote{
       We actually allow a manipulative, non-BGP compliant agent to have a
       strictly larger set of available actions: the agent may forward down
-      multiple routes. See the discussion in section 3.1. ((MAY NEED SOME WORK
-      ORGANIZING THIS IDEA))
+      multiple routes
     }. We assume that AS's have a utility function $v : Path \to \R$
     which models their preference among the different paths to the destination.
-    Typically, a non-manipulative import policy would simply select the favorite
+    A non-strategic import policy would simply select the favorite
     path available to the AS at a given point in time.
 
-    The export function could be modeled as a function
+    The export policy could be modeled as a function
     $exp_i : Path\times N(i) \to Path$ from the current path $i$ uses and a
     given neighbor of $i$ to a path to announce to the neighbor (or the empty
     path if $i$ does not wish to export).
@@ -221,15 +224,6 @@
     a much richer set of export policies is available:
     the AS can lie arbitrarily, announcing paths that it doesn't use
     or that don't even exist.
-
-    % Each AS also has an export policy which determines how it will communicate the
-    % paths it is aware of to other AS's.
-    % Specifically, for a BGP compliant AS, the export policy determines
-    % whether or not to announce the AS's currently chosen route to a given neighbor.
-
-    % Finally, each AS has some preferences over how the actual traffic in the
-    % network flows. The AS's will choose a strategy, namely their import and export
-    % policies, based on these preferences.
 
     \begin{definition}
       Suppose a BGP network $G$ has reached a stable equilibrium.

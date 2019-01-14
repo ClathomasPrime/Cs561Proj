@@ -642,11 +642,9 @@ bookmarksopen = {true}
   \end{theorem}
   \begin{proof}
     Suppose loop verification would detect a false path $P$ originally announced
-    by $m$. Specifically, suppose $P$ contains a subpath $uR$, where $R$ is not
-    actually used by $u$, and suppose a node $q$ adjacent to $u$ installs a path
-    containing $P$ (i.e. $q$ routes through $m$ based on $m$'s lie),
-    so that $q$ can announce its path to $u$ and loop verification will detect
-    the lie. ((ANOTHER TOO BIG SENTENCE PLS HELP))
+    by $m$. Specifically, this means that $P$ contains a subpath $uR$, where $R$ is not
+    actually used by $u$, and that some node $q$ adjacent to $u$ installs and can
+    announce a path containing $P$.
 
     Let $(a,b)$ be the first hop along the path $uR$ which is not used in the
     data plane. When next-hop verification is run, node $q$ will ask the query

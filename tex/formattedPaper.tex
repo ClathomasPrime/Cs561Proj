@@ -211,7 +211,7 @@ bookmarksopen = {true}
     However, they admit that many of these conditions are unreasonably strong,
     such as requiring that AS's always announce either all paths they are aware
     of or none at all to all of their neighbors.
-    
+
     Another proposal for detecting BGP lies---or more generally BGP faults---is NetReview \cite{NetReview}. When using NetReview, AS's record and publish all their BGP messages in tamper-evident logs, and other AS's are able to audit these logs to check whether there are any faults. However, actually detecting the faults requires regularly auditing the entirety of every AS's logs which is nontrivial. In addition, NetReview is purely in the control plane, so additional work needs to be done if we are concerned that AS's may route in the data plane differently than what they announced in the control plane. Next-hop verification addresses both of these concerns by being relatively simpler, and by incorporating information from the data plane.
 
   \subsection{Our contributions}
@@ -256,19 +256,6 @@ bookmarksopen = {true}
     In general, we attempt to embark on a similar program to that of
     \cite{Attraction}, experimenting with various settings and seeing
     where next-hop verification leads to good incentive properties.
-
-\begin{comment}
-  \subsection{Organization}
-    \todo{Might not need this in a ``workshop style paper''}
-    In the rest of Section 1 we discuss existing work, and we briefly outline
-    our results and their limitations. Section 2 informally presents the model
-    we use. Section 3 describes the next-hop verification protocol. Section 4
-    states and proves some theorems about the implications of using next-hop
-    verification, and goes through examples of concrete scenarios to compare
-    what would be possible with and without next-hop verification. Finally,
-    Section 5 offers some suggestions for follow-up work and Section 6 concludes.
-\end{comment}
-
 
 \section{Model Details}
   \subsection{BGP framework}
@@ -431,54 +418,7 @@ bookmarksopen = {true}
   Whenever $n$ acts, it runs the function {\sc Respond}---detailed in Figure~\ref{fig:Pseudocode}---on every query
   $Q_d(a,b)$ waiting in its queue, then waits for more queries.
   
-  \begin{figure}[h]
-    \centering
-  \begin{algorithmic}[1]
-    \State Denote the acting AS by $n$
-    % \Function{Initialize}{}
-    %   \For {each hop $(a,b)$ in $n$'s path to $d$}
-    %     \State Add the query $Q_d(a,b)$ to your query queue
-    %   \EndFor
-    % \EndFunction
-    \Function{Respond}{$Q_d(a,b)$}
-      \If { $n$ previously responded to $Q_d(a,b)$ }
-        \State \Return
-      \EndIf
-      \If { $n = a$ }
-        \If { $n$ does not use $b$ as its next hop for $d$ }
-          \State ``raise the alarm'' \label{line:sourceRaise}
-        \EndIf
-        \State \Return
-      \EndIf
-      \If { $n = b$ }
-        \If { $a$ does not use $n$ as its next hop for $d$ }
-          \State``raise the alarm'' \label{line:targetRaise}
-        \Else
-          \State send the query $Q_d(a,b)$ to all neighbors
-            \label{line:falseNegativeForward}
-        \EndIf
-        % \State send the query $Q_d(a,b)$ to all neighbors
-      \Else \ (i.e. $n \neq a,b$)
-        \If {$a$ uses $n$ as its next hop for $d$ }
-          \State ``raise the alarm'' \label{line:otherRaise}
-        \Else
-          \State send the query $Q_d(a,b)$ to all neighbors
-            \label{line:cluelessForward}
-        \EndIf
-      \EndIf
-    \EndFunction
-    % \SetKwFunction{Respond}{Respond}
-    % \Function{Main}{}
-    %   \For {each query $Q_d(a,b)$ in $queue$}
-    %     \State {\sc Respond}($Q_d(a,b)$)
-    %   \EndFor
-    %   \State clear the $queue$
-    % \EndFunction
 
-  \end{algorithmic}
-  \caption{Next-hop verification pseudocode}\label{fig:Pseudocode}
- \end{figure}
-  
   After $n$ has sent some traffic to $d$, it can start querying about its own
   route. It does this by adding the query $Q_d(a,b)$ to its own queue,
   for every hop $(a,b)$ on $n$'s path to the destination $d$.
@@ -490,6 +430,75 @@ bookmarksopen = {true}
   Of particular interest is the file src/FackCheck.hs, which implements the
   above {\sc Respond} in the functions `processMessage' and
   `factCheckAnswerQuery'. ((NOTE: FORMAT THIS STUFF))
+
+  For a motivating example of next-hop verification, consider the
+  network given in Figure~\ref{fig:Nonexistent} (a common example in discussions
+  of BGP incentives \cite{RoutingGames, Attraction}).
+  Here, $m$ is able to get a preferred path to the destination by falsely
+  announcing the path $md$ to node $2$.
+  However, nodes $1$ and $d$, which are both one hop away from $2$,
+  can tell that this announcement is not legitimate:
+  $d$ knows that $m$ does not route directly to $d$,
+  and $1$ knows that $m$ routes directly to $1$ instead of $d$.
+  If $d$, $1$, and $2$ are all compliantly running next-hop verification,
+  $2$ will ask both other nodes the query $Q_d(m,d)$ and both
+  will ``raise the alarm''.
+
+  \begin{figure}[h]
+    \centering
+    \caption{NonexistentPath}\label{fig:Nonexistent}
+    \includegraphics[width=0.5\textwidth]{NonexistentBetter}
+  \end{figure}
+
+  \begin{figure}[t]
+    % As the document currently is, putting this here was the only way I could
+    % get the line numbers to link correctly. Latex is wack
+    \centering
+    \begin{algorithmic}[1]
+      \State Denote the acting AS by $n$
+      % \Function{Initialize}{}
+      %   \For {each hop $(a,b)$ in $n$'s path to $d$}
+      %     \State Add the query $Q_d(a,b)$ to your query queue
+      %   \EndFor
+      % \EndFunction
+      \Function{Respond}{$Q_d(a,b)$}
+        \If { $n$ previously responded to $Q_d(a,b)$ }
+          \State \Return
+        \EndIf
+        \If { $n = a$ }
+          \If { $n$ does not use $b$ as its next hop for $d$ }
+            \State ``raise the alarm'' \label{line:sourceRaise}
+          \EndIf
+          \State \Return
+        \EndIf
+        \If { $n = b$ }
+          \If { $a$ does not use $n$ as its next hop for $d$ }
+            \State``raise the alarm'' \label{line:targetRaise}
+          \Else
+            \State send the query $Q_d(a,b)$ to all neighbors
+              \label{line:falseNegativeForward}
+          \EndIf
+          % \State send the query $Q_d(a,b)$ to all neighbors
+        \Else \ (i.e. $n \neq a,b$)
+          \If {$a$ uses $n$ as its next hop for $d$ }
+            \State ``raise the alarm'' \label{line:otherRaise}
+          \Else
+            \State send the query $Q_d(a,b)$ to all neighbors
+              \label{line:cluelessForward}
+          \EndIf
+        \EndIf
+      \EndFunction
+      % \SetKwFunction{Respond}{Respond}
+      % \Function{Main}{}
+      %   \For {each query $Q_d(a,b)$ in $queue$}
+      %     \State {\sc Respond}($Q_d(a,b)$)
+      %   \EndFor
+      %   \State clear the $queue$
+      % \EndFunction
+
+    \end{algorithmic}
+    \caption{Next-hop verification pseudocode}\label{fig:Pseudocode}
+  \end{figure}
 
   We note the following important considerations:
   \begin{itemize}
@@ -516,10 +525,6 @@ bookmarksopen = {true}
       being used. This is a strong assumption on the traffic in the network, but
       in very stable networks (and for important destinations) this assumption
       is not too unreasonable.
-    % \item If an AS has too many neighbors and/or destinations and keeping all
-    %   these flags becomes unmanageable, each AS can have a policy for
-    %   determining which pairs it thinks are important to monitor for.
-    %   \todo{idk if the previous bullet should encompass this??}
 
     \item If a manipulator is lying about the next-hop it is personally using,
       it may intentionally send occasional traffic towards its announced
@@ -530,29 +535,30 @@ bookmarksopen = {true}
       then $n$ cannot guarantee that $a$ doesn't forward traffic elsewhere as well.
       Instead $n$ must forward the query on to its neighbors
       in line~\ref{line:falseNegativeForward} of {\sc Respond}.
-      % ((WE HAVE A CONCRETE EXAMPLE OF THIS IF THERE IS SPACE,
-      % AT LEAST FOR VOLUME ATTRACTION))
       Furthermore, it means we cannot rely on line~\ref{line:targetRaise}
       in any of our theorems, because if $a$ is the manipulator
       it may send a small amount of ``fake traffic'' to $b$
       in order to ``cover its tracks''.
   \end{itemize}
 
-  For a motivating example of next-hop verification, consider the
-  network given in Figure~\ref{fig:Nonexistent}.
-  Here, $m$ is able to get a preferred path to the destination by falsely
-  announcing the path $md$ to node $2$.
-  However, nodes $1$ and $d$, which are both one hop away from $2$,
-  can tell that this announcement is not legitimate:
-  $d$ knows that $m$ does not route directly to $d$,
-  and $1$ knows that $m$ routes directly to $1$ instead of $d$.
-  Thus, both $d$ and $1$ will ``raise the alarm'' if they are compliantly
-  running next-hop verification.
+  Figure~\ref{fig:FalsePositive}, considered in \cite{Attraction} under the name
+  Inconsistent\-Policy, gives another example of next-hop verification,
+  and also illustrates the final bullet point above. In this network, $m$ wants
+  to carry traffic from $1$, but must lie to $1$ in order for it to choose $m$
+  as its next-hop. In order to obscure this lie, $m$ can try to send a small
+  amount of its traffic directly to $d$, while still using its favored path
+  through $2$ for the bulk of its traffic.
+  Running next-hop verification, $1$ will ask the query
+  $Q_d(m,d)$ to $d$. Node $d$ will indeed observe a small amount of traffic
+  coming from $m$, so it cannot raise the alarm.
+  But it will forward the query to node $2$, which will then ``raise the
+  alarm''.
   \begin{figure}[h]
     \centering
-    \caption{NonexistentPath}\label{fig:Nonexistent}
-    \includegraphics[width=0.5\textwidth]{NonexistentBetter}
+    \caption{FalsePositive}\label{fig:FalsePositive}
+    \includegraphics[width=0.5\textwidth]{Inconsistent}
   \end{figure}
+
 
 \section{Results}
 
@@ -572,10 +578,6 @@ bookmarksopen = {true}
   %   Let $P$ denote the path from $v$ to $c$ not containing $m$.
   %   Because the activation sequence is fair, every node along the path with
   %   be activated, in the proper order going from $v$ to $c$.
-  %   % \todo{
-  %   %   Note: should probably get rid of the protocol's ability to
-  %   %   ``drop queries'' in view of a false-negative
-  %   % }
   %   Node $v$ starts with the query $Q(a,b)$, and thus it will eventually travel
   %   to $b$, which will ``raise the alarm'' and give $m$ utility $-\infty$.
   % \end{proof}
@@ -630,58 +632,77 @@ bookmarksopen = {true}
     and all other nodes honestly participate in BGP and in next-hop verification.
     Suppose that loop verification, run on the stabilized network,
     would catch $m$'s lie.
-    \todo{finish converting this to an ex-post type of statement}
     % Suppose that, among all possible strategies of $m$ and executions of BGP,
     % loop verification would catch $m$'s lie at some point during the execution.
     Then $m$ will be caught by next-hop verification on the stabilized network.
   \end{theorem}
   \begin{proof}
-    As shown above, an AS cannot be incentivized to lie just to get a better
-    path: there must be traffic attraction.
-    Suppose $m$ attracts traffic from some node $v$ by falsely announcing a path
-    $P$ from $m$ to $d$.
-    The manipulator $m$ must announce the path $P$, and paths containing $P$
-    must spread outward through some part of the graph, and $v$ must end up
-    routing through $P$.
-    Consider the tree $T$ of agents who route through $P$ which is minimal among all
-    strategies of $m$ and executions of BGP.
-    That is, $T$ contains the agents which \emph{must} at some point route
-    through $P$ in order for $m$ to attract traffic from $v$.
-    Note that $T\setminus \{m\}$ is connected, because if $T\setminus \{m\}$
-    contained multiple connected components, then $m$ could have not lied to one
-    of the components, yet still attracted traffic from $v$.
-    This contradicts the definition of $T$ as the minimal such tree.
+    Suppose loop verification would detect a false path $P$ originally announced
+    by $m$. Specifically, suppose $P$ contains a subpath $uR$, where $R$ is not
+    actually used by $u$, and suppose a node $q$ adjacent to $u$ installs a path
+    containing $P$ (i.e. $q$ routes through $m$ based on $m$'s lie),
+    so that $q$ can announce its path to $u$ and loop verification will detect
+    the lie. ((ANOTHER TOO BIG SENTENCE PLS HELP))
 
-    % Consider all the AS's that this announcement travels
-    % through to get to $v$. These AS's form a path $Q$ from $m$ to $v$. Note
-    % that, because all non-$m$ nodes are honest, all the nodes in $Q$ must still
-    % have the path containing $P$ installed in the final stable outcome.
-    % ((NOTE: MAYBE Q SHOULD BE A TREE INSTEAD OF A PATH))
+    Let $(a,b)$ be the first hop along the path $uR$ which is not used in the
+    data plane. When next-hop verification is run, node $q$ will ask the query
+    $Q_d(a,b)$, starting with $u$, and travelling down the path $R$.
+    Note that $P$ must be a simple path starting with $m$,
+    so $R$ cannot contain $m$.
+    Thus, eventually node $a$ will receive the query $Q_d(a,b)$, and will
+    ``raise the alarm'' in line~\ref{line:sourceRaise} of {\sc Respond}.
+    % As shown above, an AS cannot be incentivized to lie just to get a better
+    % path: there must be traffic attraction.
+    % Suppose $m$ attracts traffic from some node $v$ by falsely announcing a path
+    % $P$ from $m$ to $d$.
+    % The manipulator $m$ must announce the path $P$, and paths containing $P$
+    % must spread outward through some part of the graph, and $v$ must end up
+    % routing through $P$.
+    % Consider the tree $T$ of agents who route through $P$ which is minimal among all
+    % strategies of $m$ and executions of BGP.
+    % That is, $T$ contains the agents which \emph{must} at some point route
+    % through $P$ in order for $m$ to attract traffic from $v$.
+    % Note that $T\setminus \{m\}$ is connected, because if $T\setminus \{m\}$
+    % contained multiple connected components, then $m$ could have not lied to one
+    % of the components, yet still attracted traffic from $v$.
+    % This contradicts the definition of $T$ as the minimal such tree.
 
-    \todo{this is an absolute unit of a sentence}
-    Now, the only way for loop verification to guarantee to be able to
-    catch $m$ in this lie is if some
-    node $q$ in the tree $T$ is adjacent to a node $u$, such that $P$ contains
-    the path $uR$, where $R$ is a route that $u$ did not announce.
-    Indeed, in this case a route containing $P$ can be announced to $u$ by $q$,
-    and $u$ can raise the alarm for loop verification.
+    % % Consider all the AS's that this announcement travels
+    % % through to get to $v$. These AS's form a path $Q$ from $m$ to $v$. Note
+    % % that, because all non-$m$ nodes are honest, all the nodes in $Q$ must still
+    % % have the path containing $P$ installed in the final stable outcome.
+    % % ((NOTE: MAYBE Q SHOULD BE A TREE INSTEAD OF A PATH))
 
-    Let $(a,b)$ be the first hop along $R$ which is not actually used in the
-    data plane. Note that $m\notin R$.
-    If next-hop verification is used by all non-manipulator nodes, then $v$ will
-    ask the query $Q_d(a,b)$. This query will travel within the tree $T$,
-    through $q$ to $u$, and along $R$ until it gets to $a$.
-    There, agent $a$ will ``raise the alarm'' in line~\ref{line:sourceRaise} of {\sc
-    Respond}, and $m$ will be caught.
+    % \todo{this is an absolute unit of a sentence}
+    % Now, the only way for loop verification to guarantee to be able to
+    % catch $m$ in this lie is if some
+    % node $q$ in the tree $T$ is adjacent to a node $u$, such that $P$ contains
+    % the path $uR$, where $R$ is a route that $u$ did not announce.
+    % Indeed, in this case a route containing $P$ can be announced to $u$ by $q$,
+    % and $u$ can raise the alarm for loop verification.
+
+    % Let $(a,b)$ be the first hop along $R$ which is not actually used in the
+    % data plane. Note that $m\notin R$.
+    % If next-hop verification is used by all non-manipulator nodes, then $v$ will
+    % ask the query $Q_d(a,b)$. This query will travel within the tree $T$,
+    % through $q$ to $u$, and along $R$ until it gets to $a$.
+    % There, agent $a$ will ``raise the alarm'' in line~\ref{line:sourceRaise} of {\sc
+    % Respond}, and $m$ will be caught.
   \end{proof}
-  As an aside, we note that an analogue of the above theorem for path
+  Note that an analogue of the above theorem for path
   verification does not hold\footnote{
     For an example, consider figure~\ref{fig:Bowtie}, altered by removing the
     link between nodes $m$ and $l$. The exact same lying strategy is still
     available to $m$ under next-hop verification, but this is not possible if
     path verification is used.
   }.
-  Combined with the extensive discussion in \cite{Attraction} about the capabilities of loop verification,
+  In practice, it is reasonable to run loop verification alongside next-hop
+  verification, because loop verification is very lightweight\footnote{
+    It even makes the above proof more efficient: the query doesn't have to
+    travel down the path $R$, it can be immediately answered at $u$.
+  }.
+  Combined with the extensive discussion in \cite{Attraction} about the 
+  capabilities of loop verification,
   the previous result gives us a few different situations in which
   next-hop verification will catch all incentivized lies.
   The rest of this section is dedicated to weakening the requirements
@@ -703,28 +724,29 @@ bookmarksopen = {true}
     % As shown before, $m$ cannot get a better path. We show further
     % that $m$ cannot attract more traffic (in volume).
     Suppose $m$ did manage to attract more traffic from a victim $u$.
-    Let $P$ denotes the path $u$ would have otherwise taken to $d$,
-    and let $Q$ denote the path $u$ takes in the manipulated outcome $G$.
-    Note that by assumption $m\in Q$ but $m\notin P$.
-    Let $v$ denote a node that $m$ lied to that affected $u$'s route, and suppose $v$ is told
+    Let $P$ denotes the path $u$ would have otherwise taken to $d$.
+    Note that by assumption $m\notin P$.
+    Let $v$ denote a node that $m$ lied to that affected $u$'s route,
+    and suppose $v$ is told
     that hop $(a,b)$ is used while $(a,c)$ is actually used for $c\ne b$.
 
     Because the lie told to $v$ affects the path chosen by $u$,
-    there must exist a path $R$ from $u$ to $v$ not including $m$.\footnote{If not, the lie could only affect $u$ by going back through $m$, in which case $v$ did not have any effect.}
-    Furthermore, because $m$ uses the route $S$ from $c$ to $d$
+    there must exist a path $R$ from $u$ to $v$ not including $m$
+    (if not, the lie could only affect $u$ by going back through $m$,
+    in which case $v$ did not have any effect).
+    Furthermore, because $m$ uses some route $S$ from $c$ to $d$
     (and profits from it) we know $m\notin S$.
     Thus, by eliminating any possible loops from $RPS$,
     the concatenation of the three paths,
     we get a simple path from $v$ to $c$ which does not include $m$.
     Because all non-$m$ nodes are actively and honestly running next-hop,
     the query $Q_d(a,b)$ will travel from $v$ to $c$ and $c$ will
-    ``raise the alarm'' in line~\ref{line:otherRaise} of {\sc
-    Respond}.
+    ``raise the alarm'' in line~\ref{line:otherRaise} of {\sc Respond}.
   \end{proof}
 
   However, we are not able to extend this result to generic attraction.
   Indeed, consider the example given by Figure~\ref{fig:Bowtie},
-  from \cite{Attraction}.
+  taken directly from \cite{Attraction}.
   In this network, the manipulator $m$ wants nodes $n$ and $c$
   to use $m$ as their next hop for destination $d$,
   for example, because of economic considerations.
@@ -740,7 +762,7 @@ bookmarksopen = {true}
   \end{figure}
 
   We note also that next-hop verification is able to catch the manipulator in
-  many of the examples from \cite{Attraction} (indeed, next-hop verification
+  many of the other examples from \cite{Attraction} (indeed, next-hop verification
   works for all examples except Bowtie and DisputedPath).
   This may hint at many more theorems that we were unable to prove for this
   project. For example, we make the following conjecture:
@@ -822,8 +844,6 @@ bookmarksopen = {true}
 \section{Conclusion}
 In this paper we have proposed the design of Next-Hop Verification, a protocol for catching BGP lies by using information from the control plane along with minimal data from the data plane, and by having the AS's collaborate with each other to detect these lies. We also analyzed the theoretical capabilities of the protocol, and showed that in many circumstances it is capable of catching lies that loop verification and path verification cannot catch. We believe that Next-Hop Verification's approach of sharing informationand cross-checking with the data plane is a valuable one, and that the protocol is a valuable step in working toward more secure control-plane communication.
 
-\todo{Put a code appendix I guess?? As per piazza. At minimum we need to link
-to the code}
 
 \bibliography{proj}{}
 \bibliographystyle{alpha}

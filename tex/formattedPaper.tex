@@ -440,10 +440,10 @@ bookmarksopen = {true}
   Each node maintains a queue of queries which it needs to answer.
   A query is denoted $Q_d(a,b)$, representing a node announcing that
   $a$ uses $b$ as its next-hop in its path to destination $d$.
-  
-  Whenever $n$ acts, it runs the function {\sc Respond}---detailed in Figure~\ref{fig:Pseudocode}---on every query
+
+  Whenever $n$ acts, it runs the function {\sc Respond},
+  detailed in Figure~\ref{fig:Pseudocode}, on every query
   $Q_d(a,b)$ waiting in its queue, then waits for more queries.
-  
 
   After $n$ has sent some traffic to $d$, it can start querying about its own
   route. It does this by adding the query $Q_d(a,b)$ to its own queue,
@@ -618,7 +618,7 @@ bookmarksopen = {true}
 
   Our first result formalizes the statement ``in a network without
   traffic attraction, next-hop verification will catch all incentivized lies''.
-  Figure~\ref{fig:Nonexistent} demonstrates this theorem, as discussed above.
+  See figure~\ref{fig:Nonexistent} for a demonstration of this theorem.
   \begin{theorem}
     Let $G$ be a stable outcome of a BGP instance without traffic attraction.
     Suppose there is a single manipulator $m$,
@@ -631,7 +631,7 @@ bookmarksopen = {true}
     a route from $m$ to $d$ for some $c\ne b$.
     (Note that $m$ could send traffic to both $b$ and $c$ if $m=a$.)
 
-    If there exists a path $P$ from $v$ to $c$ that does not contain $m$ then
+    If there exists a path $P$ from $v$ to $c$ that does not contain $m$, then
     because all nodes along $P$ are participating in the next-hop protocol,
     the node $v$ will ask the query $Q_d(a,b)$, which will travel along path $P$
     until $c$ can ``raise the alarm'' in line~\ref{line:otherRaise} of {\sc
@@ -644,7 +644,8 @@ bookmarksopen = {true}
     The route from $m$ to $d$ which includes $(a,c)$ must not have loops, so there exists
     a path $P_1$ from $c$ to $d$ not containing $m$.
     If there were a path $P_2$ from $v$ to $d$ which did not contain $m$, then the
-    path $P_2P_1$ is from $v$ to $c$ and would not contain $m$.
+    path $P_2P_1$ (the concatenation of $P_2$ and $P_1$)
+    is from $v$ to $c$ and would not contain $m$.
     Thus, every route from $v$ to $d$ includes $m$.
 
     Because all non-$m$ nodes are honest, $m$ must get $v$ to change its route
@@ -673,12 +674,12 @@ bookmarksopen = {true}
   \begin{proof}
     Suppose loop verification would detect a false path $P$ originally announced
     by $m$. Specifically, this means that $P$ contains a subpath $uR$, where $R$ is not
-    actually used by $u$, and that some node $q$ adjacent to $u$ installs and can
-    announce a path containing $P$.
+    actually used by $u$, and that some node $q$ adjacent to $u$ installs a route
+    containing $P$ (and can announce that path to $u$ to detect the false loop).
 
     Let $(a,b)$ be the first hop along the path $uR$ which is not used in the
     data plane. When next-hop verification is run, node $q$ will ask the query
-    $Q_d(a,b)$, starting with $u$, and travelling down the path $R$.
+    $Q_d(a,b)$. The query will start at $u$, and travel down the path $R$.
     Note that $P$ must be a simple path starting with $m$,
     so $R$ cannot contain $m$.
     Thus, eventually node $a$ will receive the query $Q_d(a,b)$, and will
@@ -744,7 +745,8 @@ bookmarksopen = {true}
   in networks with volume attraction.
   Indeed, unlike \cite{Attraction} we do not need to make \emph{any} assumptions
   on preferences or behavior (other than assuming \emph{volume} attraction)
-  to get this positive result.
+  to get this positive result. See figure~\ref{fig:FalsePositive} for an example
+  of this theorem.
   \begin{theorem}
     Let $G$ be a stable outcome of a BGP instance with traffic volume attraction.
     Suppose there is a single manipulator $m$,
@@ -755,24 +757,32 @@ bookmarksopen = {true}
   \begin{proof}
     % As shown before, $m$ cannot get a better path. We show further
     % that $m$ cannot attract more traffic (in volume).
-    Suppose $m$ did manage to attract more traffic from a victim $u$.
-    Let $P$ denotes the path $u$ would have otherwise taken to $d$.
-    Note that by assumption $m\notin P$.
-    Let $v$ denote a node that $m$ lied to that affected $u$'s route,
-    and suppose $v$ is told
-    that hop $(a,b)$ is used while $(a,c)$ is actually used for $c\ne b$.
+    % Let $v$ denote a node that $m$ lied to that affected $u$'s route,
+    % and suppose $v$ is told
+    % Because the lie told to $v$ affects the path chosen by $u$,
+    % there must exist a path $R$ from $u$ to $v$ not including $m$
+    % (if not, the lie could only affect $u$ by going back through $m$,
+    % in which case $v$ did not have any effect).
 
-    Because the lie told to $v$ affects the path chosen by $u$,
-    there must exist a path $R$ from $u$ to $v$ not including $m$
-    (if not, the lie could only affect $u$ by going back through $m$,
-    in which case $v$ did not have any effect).
-    Furthermore, because $m$ uses some route $S$ from $c$ to $d$
-    (and profits from it) we know $m\notin S$.
-    Thus, by eliminating any possible loops from $RPS$,
-    the concatenation of the three paths,
-    we get a simple path from $v$ to $c$ which does not include $m$.
+    Suppose $m$ did manage to attract more traffic from a victim $u$ by
+    announcing a false path $L$.
+    Because $u$ routes through $m$ and no node other than $m$ lied,
+    $u$ must install a route containing $L$.
+    (More technically, there must exists a choice of
+    $u$ which installs routes $L$, or else $m$ did not attract traffic by lying.)
+    Assume that $L$ contains a hop $(a,b)$, yet data plane hop
+    $(a,c)$ is actually used for $c\ne b$.
+
+    Let $P$ denotes the path $u$ would have otherwise taken to $d$.
+    Note that by our assumption and the definition of volume attraction, $m\notin P$.
+    Now, in the data plane $m$ uses some route $Q$ containing hop $(a,c)$.
+    Let $R$ be the subpath of $Q$ which routes from $c$ to $d$,
+    and note that $m\notin R$ because $Q$ is a simple path.
+    Thus, by eliminating any possible loops from $PR^\top$,
+    the concatenation of $P$ with $R^\top$ (the reverse of path $R$),
+    we get a simple path from $u$ to $c$ which does not include $m$.
     Because all non-$m$ nodes are actively and honestly running next-hop,
-    the query $Q_d(a,b)$ will travel from $v$ to $c$ and $c$ will
+    the query $Q_d(a,b)$ will travel from $u$ to $c$ and $c$ will
     ``raise the alarm'' in line~\ref{line:otherRaise} of {\sc Respond}.
   \end{proof}
 
@@ -824,7 +834,7 @@ bookmarksopen = {true}
   One important question is how effective the protocol can be in partial
   deployment or participation. In our theorems we assumed that there was only
   one malicious AS and that all others actively participated fully in helping to
-  catch lies. However in practice, it maybe the case that some AS's have not
+  catch lies. However in practice, it may be the case that some AS's have not
   deployed the necessary software and/or hardware for participation. It may also
   be the case that some AS's choose not to participate or to only share a
   limited subset of the information they have, even if they are not themselves
@@ -874,7 +884,16 @@ bookmarksopen = {true}
 
 
 \section{Conclusion}
-In this paper we have proposed the design of Next-Hop Verification, a protocol for catching BGP lies by using information from the control plane along with minimal data from the data plane, and by having the AS's collaborate with each other to detect these lies. We also analyzed the theoretical capabilities of the protocol, and showed that in many circumstances it is capable of catching lies that loop verification and path verification cannot catch. We believe that Next-Hop Verification's approach of sharing informationand cross-checking with the data plane is a valuable one, and that the protocol is a valuable step in working toward more secure control-plane communication.
+  In this paper we have proposed the design of Next-Hop Verification, a protocol
+  for catching BGP lies by using information from the control plane along with
+  minimal information sampled from the data plane,
+  and by having the AS's collaborate with each
+  other to detect these lies. We also analyzed the theoretical capabilities of the
+  protocol, and showed that in many circumstances it is capable of catching lies
+  that loop verification and path verification cannot catch. We believe that
+  Next-Hop Verification's approach of sharing informationand cross-checking with
+  the data plane is a valuable one, and that the protocol is a valuable step in
+  working toward more secure control-plane communication.
 
 
 \bibliography{proj}{}

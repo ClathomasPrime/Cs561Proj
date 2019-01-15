@@ -147,15 +147,16 @@ bookmarksopen = {true}
 
 \begin{abstract}
   This paper presents a new protocol called \emph{Next-Hop Verification},
-  which that reduces the set of contexts in which
-  other autonomous systems are incentivized to lie while participating in BGP.
+  which reduces the set of contexts in which
+  autonomous systems are incentivized to lie while participating in BGP.
   The protocol works by sharing information about BGP path announcements
-  between different ASs, using the existing structure of the network,
+  between different AS's, using the existing structure of the network,
   and checking those path announcements against the true flow of traffic
   in the data plane.
   We discuss the advantages and disadvantages of this new approach,
   and compare its effectiveness to that of previously considered verification
-  techniques.
+  techniques, focusing on cases where next-hop verification provably eliminates
+  the incentives to lie in BGP.
 \end{abstract}
 
 \section{Introduction}
@@ -165,21 +166,23 @@ bookmarksopen = {true}
     with its own data sources, destinations, and links; as well as its own
     preferences over how traffic is routed. An AS may prefer that the traffic it
     sends and receives be sent over the shortest path, in order to decrease
-    latency; or it may prefer to send its traffic through or avoiding specific
-    other AS's for economic incentives, due to contracts between AS's about
+    latency; or it may prefer to send its traffic through specific
+    other AS's for economic incentives, due to contracts about
     routing costs; or it may prefer to avoid certain other AS's, if it is
     concerned about malicious activity. In the other direction, an AS may also
     prefer to attract or deter traffic from certain other AS's, again for economic
     incentives or perhaps even to spy on certain traffic.
 
     These AS's typically use the Border Gateway Protocol (BGP) to announce
-    routes to neighbors and learn routes from neighbors in the control plane,
-    and to then choose how to actually route traffic in the data plane. However,
+    routes to neighbors and learn routes from neighbors in the 
+    \emph{control plane},
+    and to then choose how to actually route traffic in the \emph{data plane}.
+    However,
     there is no way for BGP to enforce the requirement that an AS route traffic in a
     way that matches its announcements.
     Thus, due to all of the various (often conflicting)
-    preferences that AS's have over how traffic is routed, these
-    AS's can often have incentives to lie in the control plane about what they
+    preferences that AS's have over how traffic is routed,
+    there are incentives to lie in the control plane about what an AS
     will actually do in the data plane, in order to influence how other AS's behave.
 
     To counteract this, \emph{verification protocols} have been developed which
@@ -190,9 +193,9 @@ bookmarksopen = {true}
     Instead, previous work has searched for control plane protocols
     which still manage to prevent or discourage certain types of lies.
 
-    Much work has been done on analyzing BGP verification protocols
-    through game-theoretic models.
-    \cite{RoutingGames} shows that in a general set of contexts, a form of
+    Much work has been done on analyzing BGP control plane
+    verification protocols through game-theoretic models.
+    In \cite{RoutingGames}, the authors show that in a general set of contexts, a form of
     verification called \emph{path verification}\footnote{
       In the original
       paper they refer to it as route verification.}
@@ -201,7 +204,8 @@ bookmarksopen = {true}
 
     However, lying can potentially give other benefits beyond getting better
     routes for your own traffic.
-    \cite{Attraction} analyzes BGP games in which agent's utility may depend
+    In \cite{Attraction}, the authors analyze BGP games
+    in which agent's utility may depend
     on attracting traffic from other AS's.
     In this scenario, even using path verification does not suffice to
     disincentivize lying.
@@ -209,14 +213,28 @@ bookmarksopen = {true}
     called \emph{loop verification}, which is simpler but weaker, and describe
     conditions under which path or loop verification do disincentivize lying.
     However, they admit that many of these conditions are unreasonably strong,
-    such as requiring that AS's always announce either all paths they are aware
-    of or none at all to all of their neighbors.
+    such as requiring that AS's follow an ``all or nothing'' export rule.
+    % (for each neighbor, the AS will either announce all paths, or none).
 
-    Another proposal for detecting BGP lies---or more generally BGP faults---is NetReview \cite{NetReview}. When using NetReview, AS's record and publish all their BGP messages in tamper-evident logs, and other AS's are able to audit these logs to check whether there are any faults. However, actually detecting the faults requires regularly auditing the entirety of every AS's logs which is nontrivial. In addition, NetReview is purely in the control plane, so additional work needs to be done if we are concerned that AS's may route in the data plane differently than what they announced in the control plane. Next-hop verification addresses both of these concerns by being relatively simpler, and by incorporating information from the data plane.
+    Another proposal for detecting BGP lies---or more generally BGP faults---is
+    NetReview \cite{NetReview}. When using NetReview, AS's record and publish
+    all their BGP messages in tamper-evident logs, and other AS's are able to
+    audit these logs to check whether there are any faults. However, actually
+    detecting the faults requires regularly auditing the entirety of every AS's
+    logs which is nontrivial. In addition, NetReview is purely in the control
+    plane, so additional work needs to be done if we are concerned that AS's may
+    route in the data plane differently than what they announced in the control
+    plane. Next-hop verification addresses both of these concerns by being
+    relatively simpler, and by incorporating information from the data plane.
 
   \subsection{Our contributions}
     Given the difficulty of preventing lies in BGP,
-    we would at least like to be able to \emph{detect} lies when they are told.
+    we would at least like to be able to \emph{detect} lies when they are 
+    told\footnote{
+      For the purposes of our discussion, we assume that AS's always want 
+      to avoid being caught lying, so detecting lies is the same as
+      disincentivizing those lies.
+    }.
     The initial observation of this work is that
     there will always be at least one AS that knows what each
     other AS is truly doing, namely the one that directly receives traffic from
@@ -227,7 +245,7 @@ bookmarksopen = {true}
     each AS, rather than every packet.
     Based on this observation, we present a new protocol called
     \emph{next-hop verification}
-    and show that it effectively prevents lies in certain scenarios.
+    and show that it effectively detects lies in certain scenarios.
 
     As with previous practical verification protocols,
     next-hop verification protocol runs in the control plane.
@@ -236,8 +254,10 @@ bookmarksopen = {true}
     Specifically, it requires AS's to keep track of which of its neighbors
     forward traffic towards it for different destinations.
     Given that agents have this information, next-hop verification gives an
-    effective way for agents to distribute queries and fact-checking
-    using the existing structure of the network and no encryption.
+    effective way for agents to distribute and answer queries
+    about the true data plane paths used by other AS's.
+    The distribution of queries uses the existing structure
+    of the network and requires no encryption.
 
     We find that assuming full compliance, next-hop verification allows us to catch lies assuming
     there are is no traffic attraction among preferences.
@@ -248,11 +268,11 @@ bookmarksopen = {true}
     \cite{Attraction} needed on the preferences of AS's.
     In this sense, next-hop verification is sometimes more powerful
     than path verification (although there do exist cases where
-    path verification will prevent a lie that next-hop verification cannot).
+    path verification will prevent a lie that next-hop verification cannot catch).
     Additionally, we find that next-hop verification is strictly more
     powerful than loop verification, that is, every lying situation detected
     by loop verification will be detected by next-hop verification
-    (though loop verification is still more lightweight).
+    % (though loop verification is still more lightweight).
     In general, we attempt to embark on a similar program to that of
     \cite{Attraction}, experimenting with various settings and seeing
     where next-hop verification leads to good incentive properties.
@@ -285,6 +305,7 @@ bookmarksopen = {true}
     More precisely, there are two types of actions available to each agent:
     installing certain routes in their forwarding table,
     and announcing paths to their neighbors.
+    Let $N(i)$ denote the neighbors of AS $i$ in the BGP graph.
     Formally, we could model the import policy of a node $i$ as a function
     $imp_i : Path^{N(i)} \to Path$ from the (possibly empty) collection of
     routes currently announced as available to $i$, to a (possibly empty) path
@@ -326,19 +347,20 @@ bookmarksopen = {true}
     stable solution.
     In general contexts, convergence becomes very hard to
     reason about. Because of this complexity and the fact that in practice
-    convergence typically does occur,
+    convergence typically does occur (at least for small local subgraphs),
     in this paper we choose to focus on what happens after
     convergence. We show that if the network were to converge to a state that
-    depends on lies, we would then be able to catch the lies and shame the liar.
+    depends on lies, then in some scenarios
+    we would then be able to catch the lies and shame the liar.
     As a result, it should not be beneficial to lie in a way that leads to that
     state.
-    If you are interested in the topic of convergence though, see
-    \cite{RoutingGames, GaoRexford, StablePaths, PolicyPathVector}
-    for examples of more formal details about proving different types of convergence
+    See \cite{RoutingGames, GaoRexford, StablePaths, PolicyPathVector}
+    for more formal details about proving different types of convergence
     and what assumptions are necessary.
 
 
   \subsection{Verification}
+    % CITE SOURCES IN VERIFICATION SECTION
     In this section, we give an overview of some previously considered 
     verification protocols. These will be our comparison points for next-hop
     verification.
@@ -349,7 +371,8 @@ bookmarksopen = {true}
       already announced to them.
     \end{definition}
 
-    Some extensions to BGP, such as S-BGP, can enforce path verification.
+    Some extensions to BGP, such as S-BGP, can enforce path verification
+    using cryptography.
     However, it requires additional overhead as well as universal adoption
     \cite{PartialDeploy}, because every route communicated in the control plane
     must be cryptographically signed by every AS along that route.
@@ -358,14 +381,16 @@ bookmarksopen = {true}
       In a network using \textbf{loop verification} no AS will
       use an export policy that involves not sending a path to a neighbor
       specifically because that neighbor is already in the path.
-      In addition, if
-      an AS ever sees a path containing itself that it did not announce, it will
+      In addition, if an AS $u$ ever sees a path containing $uR$, 
+      where $u$ did not actually announce route $R$, it will
       ``raise an alarm'', with the idea that the offender (the first
       node which announced a false path) can be publicly shamed.
     \end{definition}
 
-    Note that if instead export policies did not send paths to neighbors who are
-    already in them, the alarming in loop verification could not always be done.
+    Note that if agents' export policies never sent paths to neighbors who are
+    already in them, then loop verification could not be done.
+    The name loop verification comes from the ``routing loop'' formed by
+    announcing a path containing $u$ to AS $u$.
 
   \subsection{Behavioral assumptions}
     When agents get utility from attracting traffic, stronger verification
@@ -409,7 +434,8 @@ bookmarksopen = {true}
   is going wrong with the particular query. For our results section,
   we will assume that when the alarm is raised, the offending agent will be
   caught (for example, via the collaboration of the NANOG mailing list to detect
-  the problem, as suggested in \cite{Attraction}).
+  the problem, as suggested in \cite{Attraction}), and its lie will be
+  disincentivized.
 
   Each node maintains a queue of queries which it needs to answer.
   A query is denoted $Q_d(a,b)$, representing a node announcing that
@@ -545,6 +571,12 @@ bookmarksopen = {true}
       in order to ``cover its tracks''.
   \end{itemize}
 
+  \begin{figure}[h]
+    \centering
+    \caption{FalsePositive}\label{fig:FalsePositive}
+    \includegraphics[width=0.5\textwidth]{Inconsistent}
+  \end{figure}
+
   Figure~\ref{fig:FalsePositive}, considered in \cite{Attraction} under the name
   Inconsistent\-Policy, gives another example of next-hop verification,
   and also illustrates the final bullet point above. In this network, $m$ wants
@@ -556,12 +588,10 @@ bookmarksopen = {true}
   $Q_d(m,d)$ to $d$. Node $d$ will indeed observe a small amount of traffic
   coming from $m$, so it cannot raise the alarm.
   But it will forward the query to node $2$, which will then ``raise the
-  alarm''.
-  \begin{figure}[h]
-    \centering
-    \caption{FalsePositive}\label{fig:FalsePositive}
-    \includegraphics[width=0.5\textwidth]{Inconsistent}
-  \end{figure}
+  alarm''. Note that, assuming $d$ announces the path $md$ to $m$,
+  neither path verification nor loop verification can prevent this strategic
+  manipulation. So this is a case where next-hop verification gives us a strict
+  advantage over existing verification protocols.
 
 
 \section{Results}
